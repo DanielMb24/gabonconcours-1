@@ -39,6 +39,7 @@ const CandidatureComplete = () => {
     const [etablissements, setEtablissements] = useState([]);
     const [concours, setConcours] = useState<any>(null);
     const [candidatureState, setCandidatureState] = useState<any>(null);
+    const [createdCandidature, setCreatedCandidature] = useState<any>(null);
 
     useEffect(() => {
         loadData();
@@ -135,17 +136,16 @@ const CandidatureComplete = () => {
             const response = await apiService.createEtudiant(submitData);
 
             if (response.success) {
+                setCreatedCandidature(response.data);
                 toast({
                     title: "Inscription réussie !",
-                    description: `Votre numéro de candidature est : ${response.data.nupcan}`,
+                    description: `Votre NIPCAN est : ${response.data.nipcan}`,
                 });
 
                 // Mettre à jour l'état de la candidature
                 const candidatureId = `temp_${concoursId}_${Date.now()}`;
                 await candidatureStateManager.finalizeInscription(candidatureId, formData);
 
-                // Rediriger vers les documents avec le NUPCAN
-                navigate(`/documents/continue/${encodeURIComponent(response.data.nupcan)}`);
             } else {
                 throw new Error(response.message || 'Erreur lors de l\'inscription');
             }
@@ -163,6 +163,44 @@ const CandidatureComplete = () => {
 
     return (
         <Layout>
+            {createdCandidature ? (
+                <div className="max-w-3xl mx-auto px-4 py-12">
+                    <Card>
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-3xl text-green-700">Informations enregistrées</CardTitle>
+                            <p className="text-muted-foreground">
+                                {createdCandidature.delivery?.emailSent
+                                    ? 'Vos identifiants ont été envoyés à votre adresse email.'
+                                    : 'Votre inscription est enregistrée. Vérifiez la configuration email avant de poursuivre.'}
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="rounded-lg border bg-muted/30 p-5 space-y-3">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">NIPCAN - identifiant de connexion</p>
+                                    <p className="font-mono text-2xl font-bold tracking-wider text-primary">{createdCandidature.nipcan}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">NUPCAN - numéro de candidature</p>
+                                    <p className="font-mono text-xl font-semibold">{createdCandidature.nupcan}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Email destinataire</p>
+                                    <p className="font-semibold">{createdCandidature.maican}</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground text-center">
+                                Conservez votre NIPCAN : il vous permettra de vous connecter à votre espace candidat.
+                            </p>
+                            <div className="flex justify-center">
+                                <Button onClick={() => navigate(`/documents/continue/${encodeURIComponent(createdCandidature.nupcan)}`)}>
+                                    Continuer vers les documents
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            ) : (
             <div className="max-w-4xl mx-auto px-4 py-8">
                 {/* En-tête avec progression */}
                 <div className="mb-8">
@@ -477,6 +515,7 @@ const CandidatureComplete = () => {
                     </div>
                 </form>
             </div>
+            )}
         </Layout>
     );
 };
