@@ -23,7 +23,8 @@ import {
     MessageSquare,
     Award
 } from 'lucide-react';
-import { apiService } from '@/services/api';
+import { candidatePortalService } from '@/services/candidatePortalService';
+import { BACKEND_ORIGIN } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
 // Import des composants existants
@@ -35,12 +36,12 @@ import GradesBulletin from '@/components/candidat/GradesBulletin';
 interface Candidature {
     nupcan: string;
     concours: {
-        id: number;
+        id: string | number;
         libcnc: string;
         etablissement: string;
     };
     filiere: {
-        id: number;
+        id: string | number;
         nomfil: string;
     };
     statut: string;
@@ -59,7 +60,7 @@ interface Candidature {
 
 interface DashboardData {
     candidat: {
-        id: number;
+        id: string;
         nipcan: string;
         nomcan: string;
         prncan: string;
@@ -102,10 +103,7 @@ const DashboardNipcan: React.FC = () => {
             }
 
             try {
-                const response = await apiService.makeRequest<{ nipcan: string; nupcan: string }>(
-                    `/candidats/nupcan/${paramValue}/nipcan`,
-                    'GET'
-                );
+                const response = await candidatePortalService.getNipcan<{ nipcan: string; nupcan: string }>(paramValue);
 
                 if (response.success && response.data) {
                     setActualNipcan(response.data.nipcan);
@@ -124,10 +122,7 @@ const DashboardNipcan: React.FC = () => {
     const loadDashboardData = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await apiService.makeRequest<DashboardData>(
-                `/candidats/nipcan/${actualNipcan}/dashboard`,
-                'GET'
-            );
+            const response = await candidatePortalService.getDashboard<DashboardData>(actualNipcan);
             
             if (response.success && response.data) {
                 setDashboardData(response.data);
@@ -525,7 +520,7 @@ const DashboardNipcan: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-3 pt-4 border-t">
                                         <Button 
                                             className="gap-2" 
-                                            onClick={() => navigate(`/documents/${currentCandidature.nupcan}`)}
+                                            onClick={() => setActiveTab('documents')}
                                         >
                                             <FileText className="h-4 w-4" />
                                             Gerer documents
@@ -533,7 +528,7 @@ const DashboardNipcan: React.FC = () => {
                                         <Button 
                                             variant="outline" 
                                             className="gap-2"
-                                            onClick={() => navigate(`/paiement/${currentCandidature.nupcan}`)}
+                                            onClick={() => navigate(`/paiement/continue/${encodeURIComponent(currentCandidature.nupcan)}`)}
                                         >
                                             <CreditCard className="h-4 w-4" />
                                             Paiement
@@ -563,7 +558,7 @@ const DashboardNipcan: React.FC = () => {
                                 <div className="flex items-center gap-4">
                                     {dashboardData.candidat.phtcan ? (
                                         <img 
-                                            src={`http://localhost:3001/uploads/photos/${dashboardData.candidat.phtcan}`}
+                                            src={dashboardData.candidat.phtcan.startsWith('data:') ? dashboardData.candidat.phtcan : `${BACKEND_ORIGIN}/uploads/photos/${dashboardData.candidat.phtcan}`}
                                             alt="Photo"
                                             className="w-24 h-24 rounded-full object-cover border-4 border-blue-100"
                                         />

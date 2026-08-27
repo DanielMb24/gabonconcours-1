@@ -1,4 +1,5 @@
 import { api, apiService } from './api';
+import { candidatePortalRoutes } from './candidatePortalService';
 
 export interface Document {
   id: string;
@@ -7,7 +8,35 @@ export interface Document {
   document_statut: 'valide' | 'rejete' | 'en_attente';
   url: string;
   taille?: number;
+  requirement_id?: string | null;
+  obligatoire?: boolean;
+  commentaire_validation?: string;
 }
+
+export interface DocumentRequirement {
+  id: string;
+  code: string;
+  nom: string;
+  description: string;
+  obligatoire: boolean;
+  acceptedMimeTypes: string[];
+  maxSizeBytes: number;
+}
+
+export interface DocumentChecklist {
+  nupcan: string;
+  checklist: Array<{ requirement: DocumentRequirement; document: Document | null }>;
+  supplemental: Document[];
+  summary: { required: number; submitted: number; approved: number; missing: number; rejected: number };
+}
+
+const mapDocument = (doc: any): Document => ({
+  id: String(doc.id), nomdoc: doc.nomdoc, type: doc.nom_fichier || doc.type,
+  document_statut: doc.document_statut || doc.statut || 'en_attente',
+  url: doc.docdsr || doc.nom_fichier || '', taille: doc.taille,
+  requirement_id: doc.requirement_id, obligatoire: doc.obligatoire,
+  commentaire_validation: doc.commentaire_validation,
+});
 
 export interface DocumentData {
   id: string | number;
@@ -29,19 +58,18 @@ export interface DocumentData {
 export const documentService = {
   async getDocumentsByNupcan(nupcan: string): Promise<Document[]> {
     try {
-      const response = await api.get(`/candidats/nupcan/${encodeURIComponent(nupcan)}/documents`);
-      return response.data.data.map((doc: any) => ({
-        id: doc.id.toString(),
-        nomdoc: doc.nomdoc,
-        type: doc.type,
-        document_statut: doc.document_statut || doc.statut || 'en_attente',
-        url: doc.docdsr || doc.nom_fichier,
-        taille: doc.taille || (doc.nom_fichier ? 1024 : undefined),
-      }));
+      const response = await api.get(candidatePortalRoutes.documents(nupcan));
+      return response.data.data.map(mapDocument);
     } catch (error) {
       console.error('Error fetching documents by nupcan:', error);
       throw new Error('Failed to fetch documents');
     }
+  },
+
+  async getChecklist(nupcan: string): Promise<DocumentChecklist> {
+    const response = await api.get(candidatePortalRoutes.documentChecklist(nupcan));
+    const data = response.data.data;
+    return { ...data, checklist: data.checklist.map((item: any) => ({ requirement: item.requirement, document: item.document ? mapDocument(item.document) : null })), supplemental: data.supplemental.map(mapDocument) };
   },
 
   async uploadDocument(formData: FormData): Promise<Document> {
@@ -58,9 +86,9 @@ export const documentService = {
         url: doc.docdsr || doc.nom_fichier,
         taille: doc.taille,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading document:', error);
-      throw new Error('Failed to upload document');
+      throw new Error(error.response?.data?.message || 'Échec du téléversement du document');
     }
   },
 

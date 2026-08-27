@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Send, Mail, Clock, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { apiService } from '@/services/api';
+import { candidatePortalService } from '@/services/candidatePortalService';
 
 interface Message {
     id: number;
@@ -33,7 +33,7 @@ const MessagerieCandidat: React.FC<MessagerieCandidatProps> = ({ nupcan }) => {
     const { data: messages, isLoading } = useQuery({
         queryKey: ['messages', nupcan],
         queryFn: async () => {
-            const response = await apiService.makeRequest<Message[]>(`/messages/candidat/${nupcan}`, 'GET');
+            const response = await candidatePortalService.getMessages<Message[]>(nupcan);
             return response.data || [];
         },
         refetchInterval: 10000,
@@ -41,10 +41,7 @@ const MessagerieCandidat: React.FC<MessagerieCandidatProps> = ({ nupcan }) => {
 
     const sendMessageMutation = useMutation({
         mutationFn: async (data: { sujet: string; message: string }) => {
-            return await apiService.makeRequest('/messages/candidat', 'POST', {
-                nupcan,
-                ...data,
-            });
+            return candidatePortalService.sendMessage(nupcan, data.sujet, data.message);
         },
         onSuccess: () => {
             toast({

@@ -1,350 +1,48 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle, Clock, Eye, FilePlus2, FileText, RefreshCw, Trash2, Upload, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Modal, ModalContent } from '@/components/ui/modal';
-import { FileText, Upload, CheckCircle, XCircle, Clock, Trash2, Eye, RefreshCw } from 'lucide-react';
-import { documentService } from '@/services/documentService';
 import ErrorModal from '@/components/modals/ErrorModal';
 import SuccessModal from '@/components/modals/SuccessModal';
+import { documentService, type Document, type DocumentRequirement } from '@/services/documentService';
 
-interface DocumentsManagerProps {
-    nupcan: string;
-}
+const DocumentsManager = ({ nupcan }: { nupcan: string }) => {
+  const queryClient = useQueryClient();
+  const [uploadTarget, setUploadTarget] = useState<DocumentRequirement | null | undefined>();
+  const [replaceTarget, setReplaceTarget] = useState<Document | null>(null);
+  const [optionalName, setOptionalName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const query = useQuery({ queryKey: ['document-checklist', nupcan], queryFn: () => documentService.getChecklist(nupcan) });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['document-checklist', nupcan] });
+  const close = () => { setUploadTarget(undefined); setReplaceTarget(null); setOptionalName(''); setFile(null); };
+  const pickFile = (event: React.ChangeEvent<HTMLInputElement>) => { const next = event.target.files?.[0] || null; if (next && next.size > 10 * 1024 * 1024) { setError('Le fichier dépasse 10 Mo.'); event.target.value = ''; return; } setFile(next); };
 
-const DOCUMENTS_OBLIGATOIRES = [
-    { nom: 'Acte de naissance', code: 'acte_naissance' },
-    { nom: 'Carte d\'identité', code: 'carte_identite' },
-    { nom: 'Diplôme', code: 'diplome' },
-    { nom: 'Bulletin de notes', code: 'bulletin' },
-];
+  const upload = useMutation({ mutationFn: async () => { if (!file) throw new Error('Sélectionnez un fichier.'); if (uploadTarget === null && !optionalName.trim()) throw new Error('Indiquez le nom du document.'); const form = new FormData(); form.append('file', file); form.append('nupcan', nupcan); form.append('nomdoc', uploadTarget?.nom || optionalName.trim()); if (uploadTarget) form.append('requirement_id', uploadTarget.id); return documentService.uploadDocument(form); }, onSuccess: () => { setSuccess('Document envoyé en validation.'); close(); refresh(); }, onError: (err: Error) => setError(err.message) });
+  const replace = useMutation({ mutationFn: async () => { if (!file || !replaceTarget) throw new Error('Sélectionnez le nouveau fichier.'); const form = new FormData(); form.append('file', file); form.append('nomdoc', replaceTarget.nomdoc); return documentService.replaceDocument(replaceTarget.id, form); }, onSuccess: () => { setSuccess('Document remplacé et remis en attente de validation.'); close(); refresh(); }, onError: (err: Error) => setError(err.message) });
+  const remove = useMutation({ mutationFn: (id: string) => documentService.deleteDocument(nupcan, id), onSuccess: () => { setSuccess('Document facultatif supprimé.'); refresh(); }, onError: (err: Error) => setError(err.message) });
+  const badge = (status?: Document['document_statut']) => status === 'valide' ? <Badge className="bg-green-100 text-green-800"><CheckCircle className="mr-1 h-3 w-3" />Validé</Badge> : status === 'rejete' ? <Badge className="bg-red-100 text-red-800"><XCircle className="mr-1 h-3 w-3" />Rejeté</Badge> : <Badge className="bg-amber-100 text-amber-800"><Clock className="mr-1 h-3 w-3" />En attente</Badge>;
+  const actions = (document: Document, supplemental = false) => <div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" onClick={() => window.open(documentService.getDocumentPreviewUrl(document.id), '_blank')}><Eye className="h-4 w-4" /></Button>{document.document_statut === 'rejete' && <Button size="sm" onClick={() => { setReplaceTarget(document); setFile(null); }}><RefreshCw className="mr-2 h-4 w-4" />Remplacer</Button>}{supplemental && <Button variant="destructive" size="sm" onClick={() => confirm('Supprimer ce document facultatif ?') && remove.mutate(document.id)}><Trash2 className="h-4 w-4" /></Button>}</div>;
 
-const DocumentsManager: React.FC<DocumentsManagerProps> = ({ nupcan }) => {
-    const queryClient = useQueryClient();
-    const [showUploadModal, setShowUploadModal] = useState(false);
-    const [showReplaceModal, setShowReplaceModal] = useState(false);
-    const [selectedDocument, setSelectedDocument] = useState<any>(null);
-    const [uploadData, setUploadData] = useState({
-        nomdoc: '',
-        file: null as File | null
-    });
-    const [errorModal, setErrorModal] = useState({ show: false, message: '' });
-    const [successModal, setSuccessModal] = useState({ show: false, message: '' });
-
-    // Récupérer les documents
-    const { data: documents, refetch } = useQuery({
-        queryKey: ['documents', nupcan],
-        queryFn: () => documentService.getDocumentsByNupcan(nupcan),
-    });
-
-    // Upload de document
-    const uploadMutation = useMutation({
-        mutationFn: async (formData: FormData) => {
-            return await documentService.uploadDocument(formData);
-        },
-        onSuccess: () => {
-            setSuccessModal({ show: true, message: 'Document ajouté avec succès !' });
-            setShowUploadModal(false);
-            setUploadData({ nomdoc: '', file: null });
-            refetch();
-        },
-        onError: (error: any) => {
-            setErrorModal({ 
-                show: true, 
-                message: error.message || 'Erreur lors de l\'ajout du document' 
-            });
-        }
-    });
-
-    // Remplacement de document
-    const replaceMutation = useMutation({
-        mutationFn: async ({ id, formData }: { id: string, formData: FormData }) => {
-            return await documentService.replaceDocument(id, formData);
-        },
-        onSuccess: () => {
-            setSuccessModal({ show: true, message: 'Document remplacé avec succès !' });
-            setShowReplaceModal(false);
-            setSelectedDocument(null);
-            setUploadData({ nomdoc: '', file: null });
-            refetch();
-        },
-        onError: (error: any) => {
-            setErrorModal({ 
-                show: true, 
-                message: error.message || 'Erreur lors du remplacement du document' 
-            });
-        }
-    });
-
-    // Suppression de document
-    const deleteMutation = useMutation({
-        mutationFn: async (documentId: string) => {
-            await documentService.deleteDocument(nupcan, documentId);
-        },
-        onSuccess: () => {
-            setSuccessModal({ show: true, message: 'Document supprimé avec succès' });
-            refetch();
-        },
-        onError: () => {
-            setErrorModal({ show: true, message: 'Erreur lors de la suppression' });
-        }
-    });
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const extension = file.name.split('.').pop()?.toLowerCase();
-            
-            // Vérifier l'extension
-            if (!['pdf', 'jpg', 'jpeg', 'png'].includes(extension || '')) {
-                setErrorModal({ 
-                    show: true, 
-                    message: 'Format non accepté. Utilisez: PDF, JPG, PNG' 
-                });
-                return;
-            }
-
-            // Extraire le nom du document depuis le nom de fichier
-            const fileName = file.name.replace(/\.[^/.]+$/, ""); // Enlever l'extension
-            setUploadData({ 
-                nomdoc: fileName,
-                file 
-            });
-        }
-    };
-
-    const handleUpload = () => {
-        if (!uploadData.file || !uploadData.nomdoc) {
-            setErrorModal({ show: true, message: 'Veuillez remplir tous les champs' });
-            return;
-        }
-
-        // Vérifier si le document existe déjà
-        const exists = documents?.some(doc => 
-            (doc.nomdoc || '').toLowerCase() === uploadData.nomdoc.toLowerCase()
-        );
-        
-        if (exists) {
-            setErrorModal({ 
-                show: true, 
-                message: 'Un document avec ce nom existe déjà' 
-            });
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', uploadData.file);
-        formData.append('nomdoc', uploadData.nomdoc);
-        formData.append('nupcan', nupcan);
-        formData.append('type', uploadData.file.type);
-
-        uploadMutation.mutate(formData);
-    };
-
-    const handleReplace = () => {
-        if (!uploadData.file || !selectedDocument) {
-            setErrorModal({ show: true, message: 'Veuillez sélectionner un fichier' });
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', uploadData.file);
-        if (uploadData.nomdoc) {
-            formData.append('nomdoc', uploadData.nomdoc);
-        }
-
-        replaceMutation.mutate({ 
-            id: selectedDocument.id, 
-            formData 
-        });
-    };
-
-    const handleDelete = (documentId: string) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
-            deleteMutation.mutate(documentId);
-        }
-    };
-
-    const getStatutBadge = (statut: string) => {
-        const badges: any = {
-            'valide': <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Validé</Badge>,
-            'rejete': <Badge className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" />Rejeté</Badge>,
-            'en_attente': <Badge className="bg-yellow-100 text-yellow-800"><Clock className="h-3 w-3 mr-1" />En attente</Badge>,
-        };
-        return badges[statut] || badges['en_attente'];
-    };
-
-    return (
-        <div className="space-y-6">
-            {/* Indication */}
-            <Card className="border-blue-200 bg-blue-50 animate-fade-in">
-                <CardContent className="p-4">
-                    <p className="text-sm text-blue-800">
-                        <strong>Important :</strong> Veuillez nommer vos fichiers avec le nom du document demandé. 
-                        Par exemple : <code>Acte de naissance.pdf</code>
-                    </p>
-                </CardContent>
-            </Card>
-
-            {/* Liste des documents */}
-            <Card className="animate-fade-in">
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <span>Mes Documents ({documents?.length || 0})</span>
-                        <Button onClick={() => setShowUploadModal(true)} size="sm">
-                            <Upload className="h-4 w-4 mr-2" />
-                            Ajouter
-                        </Button>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {documents && documents.length > 0 ? (
-                        <div className="space-y-4">
-                            {documents.map((doc: any) => (
-                                <div
-                                    key={doc.id}
-                                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-all animate-fade-in"
-                                >
-                                    <div className="flex items-center gap-4 flex-1">
-                                        <FileText className="h-8 w-8 text-primary" />
-                                        <div className="flex-1">
-                                            <h4 className="font-semibold">{doc.nomdoc}</h4>
-                                            <p className="text-sm text-muted-foreground">
-                                                {doc.type || 'N/A'}
-                                            </p>
-                                        </div>
-                                        {getStatutBadge(doc.document_statut)}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => window.open(documentService.getDocumentPreviewUrl(doc.id), '_blank')}
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                        {doc.document_statut === 'rejete' && (
-                                            <>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedDocument(doc);
-                                                        setShowReplaceModal(true);
-                                                    }}
-                                                >
-                                                    <RefreshCw className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() => handleDelete(doc.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                            <p className="text-muted-foreground">Aucun document téléversé</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Modal Upload */}
-            <Modal open={showUploadModal} onOpenChange={setShowUploadModal}>
-                <ModalContent>
-                    <div className="p-6 space-y-4">
-                        <h2 className="text-2xl font-bold">Ajouter un Document</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium">Nom du document</label>
-                                <Input
-                                    value={uploadData.nomdoc}
-                                    onChange={(e) => setUploadData({ ...uploadData, nomdoc: e.target.value })}
-                                    placeholder="Ex: Acte de naissance"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Fichier</label>
-                                <Input
-                                    type="file"
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={handleFileChange}
-                                />
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button onClick={handleUpload} disabled={uploadMutation.isPending}>
-                                Ajouter
-                            </Button>
-                            <Button variant="outline" onClick={() => setShowUploadModal(false)}>
-                                Annuler
-                            </Button>
-                        </div>
-                    </div>
-                </ModalContent>
-            </Modal>
-
-            {/* Modal Remplacement */}
-            <Modal open={showReplaceModal} onOpenChange={setShowReplaceModal}>
-                <ModalContent>
-                    <div className="p-6 space-y-4">
-                        <h2 className="text-2xl font-bold">Remplacer le Document</h2>
-                        <p className="text-sm text-muted-foreground">
-                            Document actuel: <strong>{selectedDocument?.nomdoc}</strong>
-                        </p>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium">Nouveau nom (optionnel)</label>
-                                <Input
-                                    value={uploadData.nomdoc}
-                                    onChange={(e) => setUploadData({ ...uploadData, nomdoc: e.target.value })}
-                                    placeholder="Laisser vide pour garder le même nom"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Nouveau fichier</label>
-                                <Input
-                                    type="file"
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={handleFileChange}
-                                />
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button onClick={handleReplace} disabled={replaceMutation.isPending}>
-                                Remplacer
-                            </Button>
-                            <Button variant="outline" onClick={() => setShowReplaceModal(false)}>
-                                Annuler
-                            </Button>
-                        </div>
-                    </div>
-                </ModalContent>
-            </Modal>
-
-            {/* Modales de résultat */}
-            <ErrorModal
-                isOpen={errorModal.show}
-                onClose={() => setErrorModal({ show: false, message: '' })}
-                message={errorModal.message}
-            />
-            <SuccessModal
-                isOpen={successModal.show}
-                onClose={() => setSuccessModal({ show: false, message: '' })}
-                message={successModal.message}
-            />
-        </div>
-    );
+  if (query.isLoading) return <Card><CardContent className="p-8 text-center">Chargement des documents…</CardContent></Card>;
+  if (!query.data) return <Card className="border-red-200"><CardContent className="p-8 text-center text-red-700">Impossible de charger les documents du concours.</CardContent></Card>;
+  const data = query.data;
+  return <div className="space-y-6">
+    <Card className="border-blue-200 bg-blue-50"><CardContent className="p-4 text-sm text-blue-900"><strong>Liste définie par le concours.</strong> Déposez chaque pièce dans son emplacement. Une pièce rejetée peut être remplacée et vous pouvez ajouter des justificatifs facultatifs.</CardContent></Card>
+    <div className="grid gap-3 sm:grid-cols-4">{[['Requis',data.summary.required],['Manquants',data.summary.missing],['Validés',data.summary.approved],['Rejetés',data.summary.rejected]].map(([label,value]) => <Card key={String(label)}><CardContent className="p-4"><div className="text-2xl font-bold">{value}</div><div className="text-sm text-muted-foreground">{label}</div></CardContent></Card>)}</div>
+    <Card><CardHeader><CardTitle>Documents demandés ({data.checklist.length})</CardTitle></CardHeader><CardContent className="space-y-3">
+      {!data.checklist.length && <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">Aucun document configuré pour ce concours.</div>}
+      {data.checklist.map(({ requirement, document }) => <div key={requirement.id} className={`rounded-xl border p-4 ${document?.document_statut === 'rejete' ? 'border-red-300 bg-red-50/60' : !document && requirement.obligatoire ? 'border-amber-300 bg-amber-50/50' : ''}`}><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 gap-3"><FileText className="mt-1 h-7 w-7 shrink-0 text-primary" /><div><div className="flex flex-wrap items-center gap-2"><h4 className="font-semibold">{requirement.nom}</h4><Badge variant={requirement.obligatoire ? 'default' : 'outline'}>{requirement.obligatoire ? 'Obligatoire' : 'Facultatif'}</Badge>{document && badge(document.document_statut)}</div><p className="mt-1 text-sm text-muted-foreground">{requirement.description || 'Aucune description'}</p>{document && <p className="mt-1 text-xs text-muted-foreground">Fichier : {document.type}</p>}{document?.document_statut === 'rejete' && <p className="mt-2 flex items-center gap-1 text-sm font-medium text-red-700"><AlertCircle className="h-4 w-4" />{document.commentaire_validation || 'Document refusé : envoyez une nouvelle version.'}</p>}</div></div>{document ? actions(document) : <Button size="sm" onClick={() => { setUploadTarget(requirement); setFile(null); }}><Upload className="mr-2 h-4 w-4" />Téléverser</Button>}</div></div>)}
+    </CardContent></Card>
+    <Card><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-3"><span>Documents supplémentaires ({data.supplemental.length})</span><Button size="sm" variant="outline" onClick={() => { setUploadTarget(null); setFile(null); }}><FilePlus2 className="mr-2 h-4 w-4" />Ajouter une pièce facultative</Button></CardTitle></CardHeader><CardContent className="space-y-3">{!data.supplemental.length && <p className="py-5 text-center text-sm text-muted-foreground">Aucun document supplémentaire.</p>}{data.supplemental.map(document => <div key={document.id} className="flex items-center justify-between rounded-lg border p-4"><div><div className="flex items-center gap-2"><span className="font-medium">{document.nomdoc}</span>{badge(document.document_statut)}</div><p className="text-sm text-muted-foreground">{document.type}</p></div>{actions(document, true)}</div>)}</CardContent></Card>
+    <Modal open={uploadTarget !== undefined} onOpenChange={open => !open && close()}><ModalContent><div className="space-y-4 p-6"><h2 className="text-xl font-bold">{uploadTarget ? `Téléverser : ${uploadTarget.nom}` : 'Ajouter un document facultatif'}</h2>{uploadTarget === null && <div><label className="text-sm font-medium">Nom du document</label><Input value={optionalName} onChange={event => setOptionalName(event.target.value)} placeholder="Ex. Lettre de recommandation" /></div>}<div><label className="text-sm font-medium">Fichier (PDF ou image, 10 Mo max.)</label><Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={pickFile} /></div><div className="flex gap-2"><Button disabled={!file || upload.isPending} onClick={() => upload.mutate()}>{upload.isPending ? 'Envoi…' : 'Téléverser'}</Button><Button variant="outline" onClick={close}>Annuler</Button></div></div></ModalContent></Modal>
+    <Modal open={!!replaceTarget} onOpenChange={open => !open && close()}><ModalContent><div className="space-y-4 p-6"><h2 className="text-xl font-bold">Remplacer {replaceTarget?.nomdoc}</h2>{replaceTarget?.commentaire_validation && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Motif : {replaceTarget.commentaire_validation}</div>}<Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={pickFile} /><div className="flex gap-2"><Button disabled={!file || replace.isPending} onClick={() => replace.mutate()}>{replace.isPending ? 'Remplacement…' : 'Remplacer'}</Button><Button variant="outline" onClick={close}>Annuler</Button></div></div></ModalContent></Modal>
+    <ErrorModal title="Erreur documentaire" isOpen={!!error} onClose={() => setError('')} message={error} /><SuccessModal title="Opération réussie" isOpen={!!success} onClose={() => setSuccess('')} message={success} />
+  </div>;
 };
-
 export default DocumentsManager;

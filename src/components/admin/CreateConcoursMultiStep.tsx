@@ -162,19 +162,26 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
     };
 
     const handleSubmit = async () => {
+        const configuredDocuments = formData.documents_requis.filter(document => document.nom.trim());
+        if (!configuredDocuments.length) {
+            toast({ title: 'Documents requis', description: 'Ajoutez au moins un document demandé pour ce concours.', variant: 'destructive' });
+            setCurrentStep(4);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const payload = {
                 ...formData,
                 stacnc: '1', // Ouvert par défaut
                 series_bac_acceptees: isPremiereAnnee ? JSON.stringify(formData.series_bac_acceptees) : null,
-                documents_requis: JSON.stringify(formData.documents_requis),
+                documents_requis: configuredDocuments,
                 criteres_selection: JSON.stringify(formData.criteres_selection),
                 modalites_inscription: JSON.stringify(formData.modalites_inscription),
                 conditions_eligibilite: JSON.stringify(formData.conditions_eligibilite),
             };
 
-            await apiService.makeRequest('/concours', 'POST', payload);
+            const response = await apiService.makeRequest('/concours', 'POST', payload);
+            if (!response.success) throw new Error(response.message || 'Création du concours impossible');
             
             toast({
                 title: 'Succès',

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Download, BookOpen, Award } from 'lucide-react';
-import { apiService } from '@/services/api';
+import { candidatePortalService } from '@/services/candidatePortalService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -22,7 +22,7 @@ interface GradesBulletinProps {
     candidat: {
         nomcan: string;
         prncan: string;
-        concourId: number;
+        concourId: string | number;
         libcnc : string;
     };
 }
@@ -41,7 +41,7 @@ const GradesBulletin: React.FC<GradesBulletinProps> = ({ nupcan, candidat }) => 
         try {
             setLoading(true);
 
-            const response = await apiService.makeRequest(`/grades/candidat/${nupcan}`, 'GET');
+            const response = await candidatePortalService.getGrades(nupcan);
 
             if (response.success && response.data) {
                 const data = response.data as any;
