@@ -1,54 +1,28 @@
-# Dependencies
-node_modules/
-
-# Environment variables and secrets
-.env
-.env.*
-!.env.example
-!.env.template
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-
-# Build and test output
-dist/
-dist-ssr/
-build/
-coverage/
-.nyc_output/
-*.tsbuildinfo
-
-# Runtime data
-logs/
+# Logs
+logs
 *.log
-backend/uploads/
-!backend/uploads/.gitkeep
-!backend/uploads/**/.gitkeep
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Database exports containing real data
-backend/scripts/gabconcours-freesqldatabase.sql
-backend/scripts/gabconcoursv5_complete.sql
-*.sql.gz
-*.sql.zip
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+api-check.txt
+api-put-check.txt
 
-# Local tools and operating-system files
-.idea/
-.vscode/
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
-*.swp
-*.swo
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
-*.backup
-*.local
+*.sw?
+.vercel
