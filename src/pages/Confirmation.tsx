@@ -95,6 +95,11 @@ const Confirmation = () => {
                                         <p className="font-extrabold text-3xl text-primary/90 tracking-wider mt-1">{candidatureData.nupcan}</p>
                                     </div>
 
+                                    <div className="md:col-span-2 pb-2">
+                                        <p className="text-sm text-muted-foreground font-medium">NIPCAN - Identifiant de connexion</p>
+                                        <p className="font-extrabold text-2xl text-primary/90 tracking-wider mt-1">{candidatureData.candidat.nipcan || 'Non disponible'}</p>
+                                    </div>
+
                                     <div>
                                         <p className="text-sm text-muted-foreground">Nom et Prénom</p>
                                         <p className="font-semibold text-base">{candidatureData.candidat.prncan} {candidatureData.candidat.nomcan}</p>
