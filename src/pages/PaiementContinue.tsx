@@ -552,7 +552,7 @@ const Paiement = () => {
                                         </label>
                                         <Button
                                             onClick={handlePayment}
-                                            disabled={!selectedMethod || !refundPolicyAccepted || isProcessing}
+                                            disabled={!selectedMethod || isProcessing}
                                             className="w-full bg-primary hover:bg-primary/90"
                                             size="lg"
                                         >
