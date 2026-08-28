@@ -28,7 +28,7 @@ import { validatePhoneNumber, formatPhoneDisplay } from '@/utils/phoneValidation
 const Paiement = () => {
     const { numeroCandidature } = useParams<{ numeroCandidature: string }>();
     const navigate = useNavigate();
-    const { candidatureState, isLoading, initializeContinueCandidature, updateProgression } = useCandidatureState();
+    const { candidatureState, setCandidatureState, updateProgression } = useCandidatureState();
 
     const [selectedMethod, setSelectedMethod] = useState<string>('');
     const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -39,20 +39,6 @@ const Paiement = () => {
     const [isCheckingDocs, setIsCheckingDocs] = useState(true); // État de vérification des docs
 
     useEffect(() => {
-        if (numeroCandidature && !candidatureState) {
-            initializeContinueCandidature(numeroCandidature).catch((error) => {
-                console.error('Erreur initialisation:', error);
-                toast({
-                    title: "Erreur",
-                    description: "Impossible de charger les informations de candidature",
-                    variant: "destructive"
-                });
-                navigate('/');
-            });
-        }
-    }, [numeroCandidature, candidatureState, initializeContinueCandidature, navigate]);
-
-    useEffect(() => {
         if (candidatureState?.candidatData?.telcan) {
             setPhoneNumber(candidatureState.candidatData.telcan);
         }
@@ -61,7 +47,7 @@ const Paiement = () => {
     // Le paiement exige le dépôt complet, pas la validation administrative.
     useEffect(() => {
         if (numeroCandidature) {
-            apiService.makeRequest(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET').then(response => {
+            apiService.makeRequest<any>(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET').then(response => {
                 const eligibility: any = response.data;
                 if (!response.success || !eligibility?.eligible) {
                 toast({
@@ -71,11 +57,18 @@ const Paiement = () => {
                 });
                     navigate(`/documents/continue/${encodeURIComponent(numeroCandidature)}`);
             } else {
+                const {candidat, concours, nupcan} = eligibility.paymentContext;
+                setCandidatureState({
+                    candidatData: {id: 0, nomcan: candidat.nomcan, prncan: candidat.prncan, maican: '', telcan: '', dtncan: '', ldncan: '', phtcan: null as any, proorg: 0, proact: 0, proaff: 0, niveau_id: 0, nupcan},
+                    concoursData: {...concours, id: concours.id || 0, fracnc: String(concours.fracnc || 0), agecnc: concours.agecnc || 0, debcnc: concours.debcnc || '', fincnc: concours.fincnc || '', etablissement_num: 0},
+                    documentsData: [], paiementData: eligibility.payment || null,
+                    progression: {etapeActuelle: eligibility.alreadyPaid ? 'complete' : 'paiement', etapesCompletes: ['inscription', 'documents'], pourcentage: eligibility.alreadyPaid ? 100 : 75}
+                });
                 setIsCheckingDocs(false);
             }
             });
         }
-    }, [navigate, numeroCandidature]);
+    }, [navigate, numeroCandidature, setCandidatureState]);
 
     const handleMethodChange = (method: string) => {
         setSelectedMethod(method);
@@ -235,7 +228,7 @@ const Paiement = () => {
     };
 
     // === ÉCRAN DE CHARGEMENT ===
-    if (isLoading || isCheckingDocs) {
+    if (isCheckingDocs) {
         return (
             <Layout>
                 <div className="flex justify-center items-center min-h-screen">

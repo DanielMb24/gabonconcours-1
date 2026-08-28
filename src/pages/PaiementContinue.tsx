@@ -28,7 +28,7 @@ import {validatePhoneNumber, formatPhoneDisplay} from '@/utils/phoneValidation';
 const Paiement = () => {
     const {numeroCandidature} = useParams<{ numeroCandidature: string }>();
     const navigate = useNavigate();
-    const {candidatureState, isLoading, initializeContinueCandidature, updateProgression} = useCandidatureState();
+    const {candidatureState, setCandidatureState, updateProgression} = useCandidatureState();
 
     const [selectedMethod, setSelectedMethod] = useState<string>('');
     const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -40,21 +40,6 @@ const Paiement = () => {
     const [eligibilityLoading, setEligibilityLoading] = useState(true);
 
     useEffect(() => {
-        if (numeroCandidature && !candidatureState) {
-            // Utiliser numeroCandidature comme NUPCAN pour les nouvelles candidatures
-            initializeContinueCandidature(numeroCandidature).catch((error) => {
-                console.error('Erreur initialisation:', error);
-                toast({
-                    title: "Erreur",
-                    description: "Impossible de charger les informations de candidature",
-                    variant: "destructive"
-                });
-                navigate('/');
-            });
-        }
-    }, [numeroCandidature, candidatureState, initializeContinueCandidature, navigate]);
-
-    useEffect(() => {
         if (candidatureState?.candidatData?.telcan) {
             setPhoneNumber(candidatureState.candidatData.telcan);
         }
@@ -63,10 +48,22 @@ const Paiement = () => {
     useEffect(() => {
         if (!numeroCandidature) return;
         setEligibilityLoading(true);
-        apiService.makeRequest(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET')
-            .then(response => setPaymentEligibility(response.data || {eligible: false}))
+        apiService.makeRequest<any>(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET')
+            .then(response => {
+                const data = response.data || {eligible: false};
+                setPaymentEligibility(data);
+                if (data.paymentContext) {
+                    const {candidat, concours, nupcan} = data.paymentContext;
+                    setCandidatureState({
+                        candidatData: {id: 0, nomcan: candidat.nomcan, prncan: candidat.prncan, maican: '', telcan: '', dtncan: '', ldncan: '', phtcan: null as any, proorg: 0, proact: 0, proaff: 0, niveau_id: 0, nupcan},
+                        concoursData: {...concours, id: concours.id || 0, fracnc: String(concours.fracnc || 0), agecnc: concours.agecnc || 0, debcnc: concours.debcnc || '', fincnc: concours.fincnc || '', etablissement_num: 0},
+                        documentsData: [], paiementData: data.payment || null,
+                        progression: {etapeActuelle: data.alreadyPaid ? 'complete' : 'paiement', etapesCompletes: ['inscription', 'documents'], pourcentage: data.alreadyPaid ? 100 : 75}
+                    });
+                }
+            })
             .finally(() => setEligibilityLoading(false));
-    }, [numeroCandidature]);
+    }, [numeroCandidature, setCandidatureState]);
 
     const handleMethodChange = (method: string) => {
         setSelectedMethod(method);
@@ -239,7 +236,7 @@ const Paiement = () => {
         }
     };
 
-    if (isLoading || eligibilityLoading) {
+    if (eligibilityLoading) {
         return (
             <Layout>
                 <div className="flex justify-center items-center min-h-screen">
