@@ -88,19 +88,30 @@ const NewHomePage = () => {
                     <Building2 className="h-6 w-6 text-blue-700" />
                     <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Établissement</p>
                     <p className="mt-1 text-lg font-bold">{item.etablissement_nomets || item.etablissement_nom || 'Établissement organisateur'}</p>
-                    <div className="mt-5 flex items-start gap-3 border-t border-slate-200 pt-5 text-sm text-slate-600">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-                      <div className="min-w-0">
-                        <p className="break-words">{locationText}</p>
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-blue-700"
-                        >
-                          Ouvrir le GPS Google
-                          <ArrowRight className="h-4 w-4" />
-                        </a>
+                    <div className="mt-5 border-t border-slate-200 pt-5">
+                      <div className="overflow-hidden border border-slate-200 bg-white">
+                        <iframe
+                          title={`Localisation ${item.etablissement_nomets || item.etablissement_nom || 'établissement'}`}
+                          src={`https://maps.google.com/maps?q=${mapsQuery}&z=15&output=embed`}
+                          className="h-56 w-full border-0"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+                      <div className="mt-4 flex items-start gap-3 text-sm text-slate-600">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
+                        <div className="min-w-0">
+                          <p className="break-words">{locationText}</p>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-blue-700"
+                          >
+                            Ouvrir le GPS Google
+                            <ArrowRight className="h-4 w-4" />
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
