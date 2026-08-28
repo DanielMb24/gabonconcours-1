@@ -49,6 +49,9 @@ interface Candidature {
     created_at: string;
     documents_count: number;
     documents_valides: number;
+    documents_requis?: number;
+    documents_manquants?: number;
+    paiement_autorise?: boolean;
     paiement_statut: string | null;
     etapes: {
         inscription: boolean;
@@ -528,12 +531,18 @@ const DashboardNipcan: React.FC = () => {
                                         <Button 
                                             variant="outline" 
                                             className="gap-2"
+                                            disabled={!currentCandidature.paiement_autorise}
                                             onClick={() => navigate(`/paiement/continue/${encodeURIComponent(currentCandidature.nupcan)}`)}
                                         >
                                             <CreditCard className="h-4 w-4" />
                                             Paiement
                                         </Button>
                                     </div>
+                                    {!currentCandidature.paiement_autorise && (
+                                        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+                                            Téléversez toutes les pièces obligatoires avant de pouvoir payer. La validation administrative interviendra après le paiement.
+                                        </p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

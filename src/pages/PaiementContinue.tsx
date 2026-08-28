@@ -35,6 +35,9 @@ const Paiement = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [showInput, setShowInput] = useState(false);
     const [phoneError, setPhoneError] = useState<string>('');
+    const [refundPolicyAccepted, setRefundPolicyAccepted] = useState(false);
+    const [paymentEligibility, setPaymentEligibility] = useState<any>(null);
+    const [eligibilityLoading, setEligibilityLoading] = useState(true);
 
     useEffect(() => {
         if (numeroCandidature && !candidatureState) {
@@ -57,6 +60,14 @@ const Paiement = () => {
         }
     }, [candidatureState]);
 
+    useEffect(() => {
+        if (!numeroCandidature) return;
+        setEligibilityLoading(true);
+        apiService.makeRequest(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET')
+            .then(response => setPaymentEligibility(response.data || {eligible: false}))
+            .finally(() => setEligibilityLoading(false));
+    }, [numeroCandidature]);
+
     const handleMethodChange = (method: string) => {
         setSelectedMethod(method);
         setShowInput(method === 'moov' || method === 'airtel_money');
@@ -69,6 +80,14 @@ const Paiement = () => {
     };
 
     const handlePayment = async () => {
+        if (!paymentEligibility?.eligible) {
+            toast({title: "Documents incomplets", description: "Téléversez toutes les pièces obligatoires avant de procéder au paiement.", variant: "destructive"});
+            return;
+        }
+        if (!refundPolicyAccepted && Number(candidatureState?.concoursData?.fracnc || 0) > 0) {
+            toast({title: "Politique de remboursement", description: "Veuillez lire et accepter la politique avant de payer.", variant: "destructive"});
+            return;
+        }
         if (!candidatureState?.candidatData || !candidatureState?.concoursData) {
             toast({
                 title: "Erreur",
@@ -94,7 +113,7 @@ const Paiement = () => {
                     nupcan: candidat.nupcan || numeroCandidature,
                     montant: 0.00,
                     methode: 'gorri', // Méthode pour identifier un paiement gratuit (is_gorri)
-                    statut: 'valide', // Statut valide pour marquer l'étape comme terminée
+                    statut: 'en_attente',
                     numero_telephone: candidat.telcan || '00000000',
                     reference_paiement: `GRATUIT-${Date.now()}` // Référence spéciale
                 };
@@ -167,7 +186,7 @@ const Paiement = () => {
                 nupcan: candidat.nupcan || numeroCandidature, // Fallback sur numeroCandidature
                 montant: montant,
                 methode: selectedMethod,
-                statut: 'valide', // Ceci devrait être 'en_attente' pour un vrai process
+                statut: 'en_attente',
                 numero_telephone: phoneNumber,
                 reference_paiement: `PAY-${Date.now()}`
             };
@@ -190,8 +209,8 @@ const Paiement = () => {
             }
 
             toast({
-                title: "Paiement validé",
-                description: "Votre paiement a été traité avec succès. Un email de confirmation vous a été envoyé."
+                title: "Paiement initié",
+                description: "La demande a été transmise à l’opérateur. Le dossier sera transmis aux agents après confirmation sécurisée."
             });
 
             await updateProgression(numeroCandidature || '', 'paiement');
@@ -220,7 +239,7 @@ const Paiement = () => {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || eligibilityLoading) {
         return (
             <Layout>
                 <div className="flex justify-center items-center min-h-screen">
@@ -253,6 +272,24 @@ const Paiement = () => {
     const montant = parseFloat(concours.fracnc);
     const paiement = candidatureState.paiementData;
     const isGratuit = montant === 0;
+
+    if (!paymentEligibility?.eligible) {
+        return (
+            <Layout>
+                <div className="max-w-4xl mx-auto px-4 py-12">
+                    <Alert className="border-amber-300 bg-amber-50">
+                        <AlertTriangle className="h-5 w-5 text-amber-700"/>
+                        <AlertDescription className="text-amber-900 space-y-3">
+                            <p className="font-semibold">Paiement temporairement indisponible</p>
+                            <p>Téléversez la totalité des pièces obligatoires. Leur validation administrative aura lieu après le paiement.</p>
+                            {paymentEligibility?.missing > 0 && <p>{paymentEligibility.missing} document(s) obligatoire(s) restant(s).</p>}
+                            <Button onClick={() => navigate(`/documents/continue/${encodeURIComponent(numeroCandidature || '')}`)}>Compléter mes documents</Button>
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            </Layout>
+        );
+    }
 
     // Si le paiement est déjà effectué
     if (paiement && paiement.statut === 'valide') {
@@ -503,9 +540,13 @@ const Paiement = () => {
                                     </RadioGroup>
 
                                     <div className="mt-8">
+                                        <label className="mb-4 flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                                            <input type="checkbox" checked={refundPolicyAccepted} onChange={event => setRefundPolicyAccepted(event.target.checked)} className="mt-1"/>
+                                            <span><strong>Politique de remboursement :</strong> les frais confirmés ne sont pas remboursables après transmission du dossier, sauf double débit vérifié ou annulation du concours par l’organisateur. Le remplacement d’une pièce rejetée est gratuit.</span>
+                                        </label>
                                         <Button
                                             onClick={handlePayment}
-                                            disabled={!selectedMethod || isProcessing}
+                                            disabled={!selectedMethod || !refundPolicyAccepted || isProcessing}
                                             className="w-full bg-primary hover:bg-primary/90"
                                             size="lg"
                                         >
@@ -521,8 +562,7 @@ const Paiement = () => {
                                     <Alert className="mt-4">
                                         <AlertTriangle className="h-4 w-4"/>
                                         <AlertDescription>
-                                            Le paiement sera validé automatiquement et un email de confirmation vous
-                                            sera envoyé.
+                                            Le paiement reste en attente jusqu’à la confirmation sécurisée envoyée par l’opérateur. Aucun statut payé n’est accepté depuis le navigateur.
                                         </AlertDescription>
                                     </Alert>
                                 </>

@@ -35,6 +35,7 @@ const Paiement = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [showInput, setShowInput] = useState(false);
     const [phoneError, setPhoneError] = useState<string>('');
+    const [refundPolicyAccepted, setRefundPolicyAccepted] = useState(false);
     const [isCheckingDocs, setIsCheckingDocs] = useState(true); // État de vérification des docs
 
     useEffect(() => {
@@ -57,25 +58,24 @@ const Paiement = () => {
         }
     }, [candidatureState]);
 
-    // === VÉRIFICATION DES DOCUMENTS ===
+    // Le paiement exige le dépôt complet, pas la validation administrative.
     useEffect(() => {
-        if (candidatureState?.documentsData) {
-            const allValidated = candidatureState.documentsData.every(
-                (doc: any) => doc.document_statut === 'valide'
-            );
-
-            if (!allValidated) {
+        if (numeroCandidature) {
+            apiService.makeRequest(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET').then(response => {
+                const eligibility: any = response.data;
+                if (!response.success || !eligibility?.eligible) {
                 toast({
                     title: "Accès refusé",
-                    description: "Tous vos documents doivent être validés avant de procéder au paiement.",
+                    description: "Téléversez toutes les pièces obligatoires avant de procéder au paiement.",
                     variant: "destructive"
                 });
-                navigate(`/dashboard/${encodeURIComponent(numeroCandidature || '')}`);
+                    navigate(`/documents/continue/${encodeURIComponent(numeroCandidature)}`);
             } else {
                 setIsCheckingDocs(false);
             }
+            });
         }
-    }, [candidatureState, navigate, numeroCandidature]);
+    }, [navigate, numeroCandidature]);
 
     const handleMethodChange = (method: string) => {
         setSelectedMethod(method);
@@ -89,6 +89,10 @@ const Paiement = () => {
     };
 
     const handlePayment = async () => {
+        if (!refundPolicyAccepted && Number(candidatureState?.concoursData?.fracnc || 0) > 0) {
+            toast({title: "Politique de remboursement", description: "Veuillez lire et accepter la politique avant de payer.", variant: "destructive"});
+            return;
+        }
         if (!candidatureState?.candidatData || !candidatureState?.concoursData) {
             toast({
                 title: "Erreur",
@@ -115,7 +119,7 @@ const Paiement = () => {
                     nupcan: candidat.nupcan || numeroCandidature,
                     montant: 0.00,
                     methode: 'gorri',
-                    statut: 'valide',
+                    statut: 'en_attente',
                     numero_telephone: candidat.telcan || '00000000',
                     reference_paiement: `GRATUIT-${Date.now()}`
                 };
@@ -186,7 +190,7 @@ const Paiement = () => {
                 nupcan: candidat.nupcan || numeroCandidature,
                 montant: montant,
                 methode: selectedMethod,
-                statut: 'valide',
+                statut: 'en_attente',
                 numero_telephone: phoneNumber,
                 reference_paiement: `PAY-${Date.now()}`
             };
@@ -206,8 +210,8 @@ const Paiement = () => {
             }
 
             toast({
-                title: "Paiement validé",
-                description: "Votre paiement a été traité avec succès. Un email de confirmation vous a été envoyé."
+                title: "Paiement initié",
+                description: "La demande a été transmise à l’opérateur. Le dossier sera transmis aux agents après confirmation sécurisée."
             });
 
             await updateProgression(numeroCandidature || '', 'paiement');
@@ -515,9 +519,13 @@ const Paiement = () => {
                                     </RadioGroup>
 
                                     <div className="mt-8">
+                                        <label className="mb-4 flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                                            <input type="checkbox" checked={refundPolicyAccepted} onChange={event => setRefundPolicyAccepted(event.target.checked)} className="mt-1"/>
+                                            <span><strong>Politique de remboursement :</strong> les frais confirmés ne sont pas remboursables après transmission du dossier, sauf double débit vérifié ou annulation du concours par l’organisateur. Le remplacement d’une pièce rejetée est gratuit.</span>
+                                        </label>
                                         <Button
                                             onClick={handlePayment}
-                                            disabled={!selectedMethod || isProcessing}
+                                            disabled={!selectedMethod || !refundPolicyAccepted || isProcessing}
                                             className="w-full bg-primary hover:bg-primary/90"
                                             size="lg"
                                         >
@@ -533,7 +541,7 @@ const Paiement = () => {
                                     <Alert className="mt-4">
                                         <AlertTriangle className="h-4 w-4"/>
                                         <AlertDescription>
-                                            Le paiement sera validé automatiquement et un email de confirmation vous sera envoyé.
+                                            Le paiement reste en attente jusqu’à la confirmation sécurisée envoyée par l’opérateur. Aucun statut payé n’est accepté depuis le navigateur.
                                         </AlertDescription>
                                     </Alert>
                                 </>
