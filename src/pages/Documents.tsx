@@ -1,780 +1,766 @@
-import React, {useState, useEffect, useRef, useMemo} from 'react';
-import {useParams, useNavigate} from 'react-router-dom';
-import {useMutation, useQuery} from '@tanstack/react-query';
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {Button} from '@/components/ui/button';
-import {Progress} from '@/components/ui/progress';
-import {Upload, FileText, X, CheckCircle, AlertCircle, ArrowLeft, PlusCircle} from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { AlertCircle, ArrowLeft, CheckCircle, FileText, PlusCircle, Upload, X } from 'lucide-react';
 import Layout from '@/components/Layout';
-import {apiService} from '@/services/api';
-import {toast} from '@/hooks/use-toast';
-import {DocumentOption} from '@/types/entities';
-import {useCandidature} from '@/hooks/useCandidature';
-import {Input} from '@/components/ui/input';
-
-// Définition du type étendu pour les documents (pour inclure les personnalisés)
-interface UploadedDoc extends DocumentOption {
-    file: File;
-    isCustom?: boolean;
-    requirementId?: string;
-}
-
-interface RequirementDocumentOption extends DocumentOption {
-    requirementId: string;
-}
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { toast } from '@/hooks/use-toast';
+import { useCandidature } from '@/hooks/useCandidature';
+import { apiService } from '@/services/api';
 
 interface RequirementItem {
-    id: string;
-    nom: string;
-    description?: string;
-    obligatoire: boolean;
-    acceptedMimeTypes?: string[];
-    maxSizeBytes?: number;
+  id: string;
+  nom: string;
+  description?: string;
+  obligatoire: boolean;
+  acceptedMimeTypes?: string[];
+  maxSizeBytes?: number;
+}
+
+interface ExistingDocument {
+  id: string;
+  nomdoc: string;
+  nom_fichier?: string;
+  mime_type?: string;
+  statut?: 'valide' | 'rejete' | 'en_attente';
+  requirement_id?: string | null;
 }
 
 interface DocumentChecklistResponse {
-    checklist: Array<{requirement: RequirementItem; document: unknown | null}>;
+  nupcan: string;
+  checklist: Array<{ requirement: RequirementItem; document: ExistingDocument | null }>;
+  supplemental: ExistingDocument[];
 }
 
+interface UploadSlot {
+  key: string;
+  label: string;
+  required: boolean;
+  description?: string;
+  requirementId?: string;
+  acceptedMimeTypes?: string[];
+  maxSizeBytes?: number;
+  file?: File | null;
+  existingDocumentId?: string;
+  existingFileName?: string;
+  existingStatus?: 'valide' | 'rejete' | 'en_attente';
+  isCustom?: boolean;
+}
+
+const DEFAULT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024;
+
+const acceptFromMimeTypes = (mimeTypes?: string[]) => {
+  const source = mimeTypes?.length ? mimeTypes : DEFAULT_MIME_TYPES;
+  const mapped = source.flatMap((mimeType) => {
+    switch (mimeType) {
+      case 'application/pdf':
+        return ['.pdf'];
+      case 'image/jpeg':
+        return ['.jpg', '.jpeg'];
+      case 'image/png':
+        return ['.png'];
+      case 'image/webp':
+        return ['.webp'];
+      default:
+        return [mimeType];
+    }
+  });
+  return Array.from(new Set(mapped)).join(',');
+};
+
+const statusLabel = (status?: string) =>
+  status === 'valide' ? 'Validé' : status === 'rejete' ? 'À remplacer' : 'Déjà téléversé';
+
 const Documents = () => {
-    const {numeroCandidature} = useParams<{ numeroCandidature: string }>();
-    const navigate = useNavigate();
-    const {candidatureData, loadCandidature} = useCandidature();
+  const { numeroCandidature } = useParams<{ numeroCandidature: string }>();
+  const navigate = useNavigate();
+  const { candidatureData, loadCandidature } = useCandidature();
+  const [uploadedDocuments, setUploadedDocuments] = useState<Map<string, UploadSlot>>(new Map());
+  const [customDocsCounter, setCustomDocsCounter] = useState(0);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [currentUploadType, setCurrentUploadType] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Utiliser un Map pour stocker les documents et leurs métadonnées
-    const [uploadedDocuments, setUploadedDocuments] = useState<Map<string, UploadedDoc>>(new Map());
-    const [customDocsCounter, setCustomDocsCounter] = useState(0);
+  useEffect(() => {
+    if (numeroCandidature && !candidatureData) {
+      loadCandidature(numeroCandidature).catch((error) => {
+        console.error('Erreur lors du chargement de la candidature:', error);
+        toast({
+          title: 'Erreur',
+          description: 'Impossible de charger les informations de candidature.',
+          variant: 'destructive',
+        });
+        navigate('/');
+      });
+    }
+  }, [numeroCandidature, candidatureData, loadCandidature, navigate]);
 
-    const [uploadSuccess, setUploadSuccess] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [currentUploadType, setCurrentUploadType] = useState('');
+  const checklistQuery = useQuery({
+    queryKey: ['document-checklist', numeroCandidature],
+    queryFn: () =>
+      apiService.get<DocumentChecklistResponse>(
+        `/candidats/nupcan/${encodeURIComponent(numeroCandidature!)}/document-checklist`,
+      ),
+    enabled: Boolean(numeroCandidature),
+  });
 
-    // Logique de chargement de candidature
-    useEffect(() => {
-        if (numeroCandidature && !candidatureData) {
-            loadCandidature(numeroCandidature).catch((err) => {
-                console.error("Erreur lors du chargement de la candidature:", err);
-                toast({
-                    title: "Erreur",
-                    description: "Impossible de charger les informations de candidature",
-                    variant: "destructive",
-                });
-                navigate('/');
-            });
-        }
-    }, [numeroCandidature, candidatureData, loadCandidature, navigate]);
+  const documentsRequis = useMemo(
+    () => checklistQuery.data?.data?.checklist ?? [],
+    [checklistQuery.data],
+  );
+  const supplementalDocuments = useMemo(
+    () => checklistQuery.data?.data?.supplemental ?? [],
+    [checklistQuery.data],
+  );
 
-    const concoursId = candidatureData?.concours?.id?.toString();
-    const concours = candidatureData?.concours;
+  useEffect(() => {
+    if (!documentsRequis.length && !supplementalDocuments.length) return;
 
-    // Cette route calcule les pièces à partir du concours ET de la filière de
-    // la candidature. Elle constitue l'unique source de vérité du formulaire.
-    const {data: checklistResponse, isLoading: checklistLoading, isError: checklistError} = useQuery({
-        queryKey: ['document-checklist', numeroCandidature],
-        queryFn: () => apiService.get<DocumentChecklistResponse>(`/candidats/nupcan/${encodeURIComponent(numeroCandidature!)}/document-checklist`),
-        enabled: !!numeroCandidature,
+    setUploadedDocuments((previous) => {
+      const next = new Map(previous);
+
+      for (const item of documentsRequis) {
+        const key = item.requirement.id;
+        const current = next.get(key);
+        if (current?.file) continue;
+
+        next.set(key, {
+          key,
+          label: item.requirement.nom,
+          required: item.requirement.obligatoire,
+          description: item.requirement.description,
+          requirementId: item.requirement.id,
+          acceptedMimeTypes: item.requirement.acceptedMimeTypes,
+          maxSizeBytes: item.requirement.maxSizeBytes,
+          file: current?.file ?? null,
+          existingDocumentId: item.document?.id,
+          existingFileName: item.document?.nom_fichier || item.document?.nomdoc,
+          existingStatus: item.document?.statut,
+          isCustom: false,
+        });
+      }
+
+      for (const document of supplementalDocuments) {
+        const key = `custom_existing_${document.id}`;
+        const current = next.get(key);
+        if (current?.file) continue;
+
+        next.set(key, {
+          key,
+          label: document.nomdoc || 'Document complémentaire',
+          required: false,
+          file: current?.file ?? null,
+          existingDocumentId: document.id,
+          existingFileName: document.nom_fichier || document.nomdoc,
+          existingStatus: document.statut,
+          isCustom: true,
+        });
+      }
+
+      return next;
     });
+  }, [documentsRequis, supplementalDocuments]);
 
-    const documentsRequis = useMemo(() =>
-        checklistResponse?.data?.checklist?.map(item => item.requirement) || [],
-    [checklistResponse]);
+  const concours = candidatureData?.concours;
+  const uploadTarget = uploadedDocuments.get(currentUploadType);
+  const acceptValue = acceptFromMimeTypes(uploadTarget?.acceptedMimeTypes);
 
-    // Créer les options de documents à partir des données du concours
-    const documentOptions: RequirementDocumentOption[] = useMemo(() => {
-        return documentsRequis.map((doc: RequirementItem) => ({
-            value: doc.id,
-            label: doc.nom,
-            required: doc.obligatoire,
-            description: doc.description || '',
-            requirementId: doc.id,
-        }));
-    }, [documentsRequis]);
+  const requiredDocs = useMemo(
+    () => Array.from(uploadedDocuments.values()).filter((doc) => doc.required && !doc.isCustom),
+    [uploadedDocuments],
+  );
 
-    // Séparer documents obligatoires et optionnels
-    const requiredDocs = useMemo(() => 
-        documentOptions.filter(doc => doc.required), 
-        [documentOptions]
-    );
+  const optionalDocs = useMemo(
+    () =>
+      Array.from(uploadedDocuments.values()).filter(
+        (doc) => !doc.required && !doc.isCustom && doc.requirementId,
+      ),
+    [uploadedDocuments],
+  );
 
-    const optionalDocs = useMemo(() => 
-        documentOptions.filter(doc => !doc.required), 
-        [documentOptions]
-    );
+  const customDocs = useMemo(
+    () => Array.from(uploadedDocuments.values()).filter((doc) => doc.isCustom),
+    [uploadedDocuments],
+  );
 
-    // Calculer la progression sur les obligatoires uniquement
-    const uploadedRequiredDocs = useMemo(() => 
-        Array.from(uploadedDocuments.values()).filter(doc => doc.required),
-        [uploadedDocuments]
-    );
+  const completedRequiredDocs = useMemo(
+    () =>
+      requiredDocs.filter((doc) => Boolean(doc.file) || Boolean(doc.existingDocumentId)),
+    [requiredDocs],
+  );
 
-    const progress = requiredDocs.length > 0 
-        ? (uploadedRequiredDocs.length / requiredDocs.length) * 100 
-        : 0;
+  const completionPercentage = requiredDocs.length
+    ? Math.round((completedRequiredDocs.length / requiredDocs.length) * 100)
+    : 100;
 
-    // Fonction d'upload (légèrement modifiée pour accepter le Map)
-    const uploadMutation = useMutation({
-        mutationFn: async ({filesMap, concoursId, nupcan}: {
-            filesMap: Map<string, UploadedDoc>;
-            concoursId: string;
-            nupcan: string
-        }) => {
-            if (!nupcan) throw new Error('NUPCAN est requis pour l\'upload des documents');
-            if (!concoursId) throw new Error('ID du concours manquant');
+  const validateFileForSlot = (file: File, slot?: UploadSlot) => {
+    const allowedMimeTypes =
+      slot?.acceptedMimeTypes?.length ? slot.acceptedMimeTypes : DEFAULT_MIME_TYPES;
+    const maxSizeBytes = slot?.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES;
 
-            const documents = Array.from(filesMap.values()).filter(doc => doc.file instanceof File);
-            if (documents.length === 0) {
-                throw new Error('Aucun fichier valide à envoyer');
-            }
-            const responses = [];
-            for (const doc of documents) {
-                const formData = new FormData();
-                formData.append('nupcan', nupcan);
-                formData.append('file', doc.file);
-                formData.append('nomdoc', doc.label);
-                if (doc.requirementId) formData.append('requirement_id', doc.requirementId);
-                const response = await apiService.makeFormDataRequest('/documents', 'POST', formData);
-                if (!response.success) throw new Error(response.message || `Échec de l'envoi : ${doc.label}`);
-                responses.push(response.data);
-            }
-            return responses;
-        },
-        onSuccess: (response) => {
-            setUploadSuccess(true);
-            toast({
-                title: 'Documents enregistrés !',
-                description: `Les documents ont été uploadés avec succès.`,
-            });
-            
-            // Recharger les données de la candidature avant la redirection
-            if (numeroCandidature) {
-                loadCandidature(numeroCandidature).then(() => {
-                    setTimeout(() => {
-                        // Redirection vers le dashboard avec un paramètre pour forcer le rechargement
-                        navigate(`/dashboard/${encodeURIComponent(numeroCandidature)}?refresh=true`);
-                    }, 1500);
-                }).catch((err) => {
-                    console.error('Erreur rechargement candidature:', err);
-                    // Rediriger quand même
-                    setTimeout(() => {
-                        navigate(`/dashboard/${encodeURIComponent(numeroCandidature)}?refresh=true`);
-                    }, 1500);
-                });
-            }
-        },
-        onError: (error) => {
-            console.error('Erreur d\'upload:', error);
-            setUploadSuccess(false);
-            toast({
-                title: 'Erreur d\'upload',
-                description: 'Une erreur est survenue lors de l\'envoi des documents. Veuillez réessayer.',
-                variant: 'destructive',
-            });
-        },
-    });
-
-    const fileValidation = (file: File): boolean => {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-
-        if (file.size > maxSize) {
-            toast({
-                title: '❌ Fichier trop volumineux',
-                description: (
-                    <div className="mt-2 space-y-1">
-                        <p className="font-semibold">Le fichier ne doit pas dépasser 5MB</p>
-                        <p className="text-xs opacity-80">Taille actuelle: {(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                    </div>
-                ),
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return false; 
-        }
-
-        if (!allowedTypes.includes(file.type)) {
-            toast({
-                title: '❌ Format non supporté',
-                description: (
-                    <div className="mt-2 space-y-1">
-                        <p className="font-semibold">Seuls les fichiers PDF, JPEG et PNG sont acceptés</p>
-                        <p className="text-xs opacity-80">Format détecté: {file.type || 'inconnu'}</p>
-                    </div>
-                ),
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return false;
-        }
-        return true;
-    };
-
-
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !currentUploadType) return;
-
-        if (!fileValidation(file)) {
-            // Réinitialiser l'input après l'échec de validation
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            setCurrentUploadType('');
-            return;
-        }
-
-        // 1. Gérer les documents obligatoires
-        const docOption = documentOptions.find(opt => opt.value === currentUploadType);
-        if (docOption) {
-            setUploadedDocuments(prev => new Map(prev).set(currentUploadType, {
-                ...docOption,
-                file: file,
-            }));
-            
-            toast({
-                title: '✅ Document ajouté',
-                description: (
-                    <div className="mt-1 space-y-1">
-                        <p className="font-semibold">{docOption.label}</p>
-                        <p className="text-xs opacity-80">{file.name} ({(file.size / 1024).toFixed(0)} KB)</p>
-                    </div>
-                ),
-                duration: 3000,
-            });
-        }
-
-        // 2. Gérer les documents personnalisés
-        else if (currentUploadType.startsWith('custom_')) {
-            const docKey = currentUploadType; 
-            const currentDoc = uploadedDocuments.get(docKey);
-
-            if (currentDoc) {
-                setUploadedDocuments(prev => new Map(prev).set(docKey, {
-                    ...currentDoc,
-                    file: file,
-                    label: currentDoc.label, 
-                    required: false,
-                    value: docKey,
-                }));
-
-                toast({
-                    title: '✅ Document personnalisé ajouté',
-                    description: (
-                        <div className="mt-1 space-y-1">
-                            <p className="font-semibold">{currentDoc.label}</p>
-                            <p className="text-xs opacity-80">{file.name} ({(file.size / 1024).toFixed(0)} KB)</p>
-                        </div>
-                    ),
-                    duration: 3000,
-                });
-            }
-        }
-
-        // Nettoyage après succès
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        setCurrentUploadType('');
-    };
-
-    // Déclenche l'ouverture de l'input file
-    const triggerFileInput = (docType: string) => {
-        setCurrentUploadType(docType);
-        if (fileInputRef.current) {
-            fileInputRef.current.click();
-        }
-    };
-
-    const removeDocument = (key: string) => {
-        const doc = uploadedDocuments.get(key);
-        
-        setUploadedDocuments((prev) => {
-            const newDocs = new Map(prev);
-            newDocs.delete(key);
-            return newDocs;
-        });
-
-        if (doc) {
-            toast({
-                title: '🗑️ Document supprimé',
-                description: (
-                    <div className="mt-1">
-                        <p className="font-semibold">{doc.label}</p>
-                        <p className="text-xs opacity-80">Le document a été retiré de votre dossier</p>
-                    </div>
-                ),
-                duration: 3000,
-            });
-        }
-    };
-
-    const handleContinuer = () => {
-        const requiredTypes = documentOptions.filter((opt) => opt.required).map((opt) => opt.value);
-        const uploadedKeys = Array.from(uploadedDocuments.keys());
-
-        const missingRequired = requiredTypes.filter((type) => !uploadedKeys.includes(type));
-
-        if (missingRequired.length > 0) {
-            const missingLabels = missingRequired.map((type) => documentOptions.find(opt => opt.value === type)?.label || type).join(', ');
-            toast({
-                title: '⚠️ Documents manquants',
-                description: (
-                    <div className="mt-2 space-y-2">
-                        <p className="font-semibold">Veuillez téléverser tous les documents obligatoires</p>
-                        <div className="bg-red-100 rounded-md p-2 text-xs">
-                            <p className="font-medium mb-1">Documents manquants:</p>
-                            <ul className="list-disc list-inside space-y-0.5">
-                                {missingRequired.map((type) => {
-                                    const doc = documentOptions.find(opt => opt.value === type);
-                                    return <li key={type}>{doc?.label}</li>;
-                                })}
-                            </ul>
-                        </div>
-                    </div>
-                ),
-                variant: 'destructive',
-                duration: 7000,
-            });
-            return;
-        }
-
-        // Vérifier que tous les documents uploadés ont bien un fichier
-        const documentsWithFiles = Array.from(uploadedDocuments.values()).filter(doc => doc.file && doc.file instanceof File);
-        
-        if (documentsWithFiles.length === 0) {
-            toast({
-                title: '⚠️ Aucun document valide',
-                description: 'Veuillez ajouter au moins un document avec un fichier',
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return;
-        }
-
-        // Vérifier que tous les documents obligatoires ont un fichier
-        const requiredDocsWithFiles = documentsWithFiles.filter(doc => doc.required);
-        if (requiredDocsWithFiles.length < requiredDocs.length) {
-            toast({
-                title: '⚠️ Documents obligatoires incomplets',
-                description: 'Tous les documents obligatoires doivent avoir un fichier uploadé',
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return;
-        }
-
-        if (!concoursId || !numeroCandidature) {
-            toast({
-                title: '❌ Erreur système',
-                description: 'Informations de candidature/concours manquantes. Veuillez contacter le support.',
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return;
-        }
-
-        console.log('🚀 Lancement upload de', documentsWithFiles.length, 'document(s)');
-        uploadMutation.mutate({
-            filesMap: uploadedDocuments,
-            concoursId: concoursId,
-            nupcan: numeroCandidature,
-        });
-    };  
-
-    // --- Logique Documents Personnalisés ---
-
-    const addCustomDocumentField = () => {
-        const newKey = `custom_${Date.now()}_${customDocsCounter}`;
-        setCustomDocsCounter(prev => prev + 1);
-        setUploadedDocuments(prev => new Map(prev).set(newKey, {
-            value: newKey,
-            label: '',
-            required: false,
-            file: null as unknown as File, // Marquer comme null initialement
-            isCustom: true
-        }));
-    };
-
-    const updateCustomDocumentLabel = (key: string, label: string) => {
-        setUploadedDocuments(prev => {
-            const newDocs = new Map(prev);
-            const doc = newDocs.get(key);
-            if (doc) {
-                newDocs.set(key, {...doc, label: label});
-            }
-            return newDocs;
-        });
-    };
-
-    // Calculer les statistiques pour l'affichage
-    const uploadedRequiredCount = uploadedRequiredDocs.length;
-    const completionPercentage = Math.round(progress);
-
-    const documentsList = Array.from(uploadedDocuments.values());
-    const mandatoryDocsList = documentsList.filter(doc => !doc.isCustom);
-    const customDocsList = documentsList.filter(doc => doc.isCustom);
-
-    if (!candidatureData) {
-        // ... (Code de chargement/erreur de candidature)
+    if (file.size > maxSizeBytes) {
+      toast({
+        title: 'Fichier trop volumineux',
+        description: `La taille maximale autorisée est ${(maxSizeBytes / (1024 * 1024)).toFixed(0)} Mo.`,
+        variant: 'destructive',
+      });
+      return false;
     }
 
-    return (
-        <Layout>
-            <div className="max-w-7xl mx-auto px-4 py-3">
+    if (!allowedMimeTypes.includes(file.type)) {
+      toast({
+        title: 'Format non autorisé',
+        description: `Cette pièce accepte ${allowedMimeTypes.join(', ')}.`,
+        variant: 'destructive',
+      });
+      return false;
+    }
 
-                {/* Champ File Input caché */}
-                <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    style={{display: 'none'}}
-                />
+    return true;
+  };
 
-                {/* En-tête ultra-compact */}
-                <div className="mb-5 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                        <Button variant="ghost" onClick={() => navigate(-1)} size="sm" className="h-8">
-                            <ArrowLeft className="h-4 w-4 mr-1"/>
-                            Retour
-                        </Button>
-                        <div>
-                            <h1 className="text-lg font-bold sm:text-xl">Dépôt des documents</h1>
-                            {concours?.libcnc && (
-                                <p className="text-xs text-muted-foreground">{concours.libcnc}</p>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Progression inline */}
-                    <div className="flex items-center justify-between gap-3 sm:justify-end">
-                        <div className="text-right">
-                            <div className="text-lg font-bold text-primary">
-                                {uploadedRequiredCount}/{requiredDocs.length}
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">Requis</p>
-                        </div>
-                        <Progress value={completionPercentage} className="w-24 h-1.5"/>
-                    </div>
-                </div>
+  const uploadMutation = useMutation({
+    mutationFn: async (nupcan: string) => {
+      const changedDocuments = Array.from(uploadedDocuments.values()).filter((doc) => doc.file);
 
-                {/* Messages de statut - Design moderne avec animation */}
-                {(uploadMutation.isPending || uploadSuccess || uploadMutation.isError) && (
-                    <div className={`mb-4 flex items-start gap-3 border p-4 ${
-                        uploadSuccess 
-                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-800' 
-                            : uploadMutation.isPending 
-                                ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 text-blue-800' 
-                                : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200 text-red-800'
-                    }`}>
-                        <div className="flex-shrink-0 mt-0.5">
-                            {uploadSuccess ? (
-                                <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
-                                    <CheckCircle className="h-4 w-4 text-white"/>
-                                </div>
-                            ) : uploadMutation.isPending ? (
-                                <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                </div>
-                            ) : (
-                                <div className="h-6 w-6 rounded-full bg-red-500 flex items-center justify-center">
-                                    <AlertCircle className="h-4 w-4 text-white"/>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex-1">
-                            <p className="font-semibold text-sm mb-0.5">
-                                {uploadSuccess ? 'Succès !' : 
-                                 uploadMutation.isPending ? 'Envoi en cours...' : 
-                                 'Erreur'}
-                            </p>
-                            <p className="text-xs opacity-90">
-                                {uploadSuccess ? 'Documents enregistrés avec succès. Redirection vers votre tableau de bord...' : 
-                                 uploadMutation.isPending ? 'Veuillez patienter pendant l\'envoi de vos documents.' : 
-                                 'Une erreur est survenue lors de l\'enregistrement. Veuillez réessayer.'}
-                            </p>
-                        </div>
-                    </div>
-                )}
+      if (changedDocuments.length === 0) {
+        return [];
+      }
 
-                {checklistLoading && <div className="mb-4 border bg-muted/30 p-5 text-sm text-muted-foreground">Chargement des pièces demandées pour ce concours…</div>}
-                {checklistError && <div className="mb-4 border border-red-300 bg-red-50 p-5 text-sm text-red-700">Impossible de charger la liste officielle des documents. Réessayez avant de poursuivre.</div>}
-                {!checklistLoading && !checklistError && documentOptions.length === 0 && <div className="mb-4 border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">Aucune pièce n’a été configurée pour ce concours et cette filière. Aucun document générique ne vous sera demandé.</div>}
+      const responses = [];
+      for (const doc of changedDocuments) {
+        const formData = new FormData();
+        formData.append('file', doc.file as File);
+        formData.append('nomdoc', doc.label);
 
-                {/* Layout en 2 colonnes: Documents à gauche (70%), Consignes à droite (30%) */}
-                <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+        if (doc.existingDocumentId) {
+          const response = await apiService.makeFormDataRequest(
+            `/documents/${doc.existingDocumentId}/replace`,
+            'PUT',
+            formData,
+          );
+          if (!response.success) throw new Error(response.message || `Échec: ${doc.label}`);
+          responses.push(response.data);
+          continue;
+        }
 
-                    {/* COLONNE PRINCIPALE: Documents (70%) */}
-                    <div className="lg:col-span-7 space-y-3">
+        formData.append('nupcan', nupcan);
+        if (doc.requirementId) formData.append('requirement_id', doc.requirementId);
 
-                        {/* 1. Documents Obligatoires - Format compact en grille */}
-                        {requiredDocs.length > 0 && (
-                            <Card className="border-red-200">
-                                <CardHeader className="pb-2 pt-3 px-4">
-                                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                        <AlertCircle className="h-4 w-4 text-red-500" />
-                                        Documents Obligatoires ({uploadedRequiredDocs.length}/{requiredDocs.length})
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-3">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {requiredDocs.map((doc) => {
-                                            const uploadedDoc = uploadedDocuments.get(doc.value);
-                                            const isUploaded = !!uploadedDoc?.file;
+        const response = await apiService.makeFormDataRequest('/documents', 'POST', formData);
+        if (!response.success) throw new Error(response.message || `Échec: ${doc.label}`);
+        responses.push(response.data);
+      }
 
-                                            return (
-                                                <div key={doc.value}
-                                                     className={`p-2 border rounded-md transition-all text-sm ${isUploaded ? 'border-green-500 bg-green-50' : 'hover:bg-gray-50'}`}>
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <FileText className={`h-3.5 w-3.5 flex-shrink-0 ${isUploaded ? 'text-green-600' : 'text-gray-400'}`} />
-                                                                <p className="font-medium text-xs truncate">
-                                                                    {doc.label}
-                                                                    <span className="text-red-500 ml-0.5">*</span>
-                                                                </p>
-                                                            </div>
-                                                            {doc.description && (
-                                                                <p className="text-[10px] text-muted-foreground ml-5 mt-0.5 line-clamp-1">
-                                                                    {doc.description}
-                                                                </p>
-                                                            )}
-                                                            {isUploaded && (
-                                                                <p className="text-[10px] text-green-600 flex items-center gap-1 ml-5 mt-0.5 truncate">
-                                                                    <CheckCircle className="h-2.5 w-2.5"/> {uploadedDoc.file.name}
-                                                                </p>
-                                                            )}
-                                                        </div>
+      return responses;
+    },
+    onSuccess: async () => {
+      setUploadSuccess(true);
+      toast({
+        title: 'Documents enregistrés',
+        description: 'Les pièces ont bien été prises en compte.',
+      });
 
-                                                        {/* Boutons d'action */}
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            {isUploaded ? (
-                                                                <>
-                                                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => removeDocument(doc.value)}
-                                                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                                                    >
-                                                                        <X className="h-3 w-3"/>
-                                                                    </Button>
-                                                                </>
-                                                            ) : (
-                                                                <Button
-                                                                    onClick={() => triggerFileInput(doc.value)}
-                                                                    size="sm"
-                                                                    className="h-6 text-xs px-2"
-                                                                >
-                                                                    <Upload className="h-3 w-3 mr-1"/> Upload
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
+      if (numeroCandidature) {
+        await Promise.allSettled([
+          loadCandidature(numeroCandidature),
+          checklistQuery.refetch(),
+        ]);
+      }
 
-                        {/* 2. Documents Optionnels - Format compact en grille */}
-                        {optionalDocs.length > 0 && (
-                            <Card className="border-blue-200">
-                                <CardHeader className="pb-2 pt-3 px-4">
-                                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-blue-500" />
-                                        Documents Optionnels
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-3">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {optionalDocs.map((doc) => {
-                                            const uploadedDoc = uploadedDocuments.get(doc.value);
-                                            const isUploaded = !!uploadedDoc?.file;
+      setTimeout(() => {
+        navigate(`/dashboard/${encodeURIComponent(numeroCandidature || '')}?refresh=true`);
+      }, 1200);
+    },
+    onError: (error: Error) => {
+      setUploadSuccess(false);
+      toast({
+        title: 'Erreur d’upload',
+        description: error.message || 'Une erreur est survenue pendant l’envoi.',
+        variant: 'destructive',
+      });
+    },
+  });
 
-                                            return (
-                                                <div key={doc.value}
-                                                     className={`p-2 border rounded-md transition-all text-sm ${isUploaded ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}>
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <FileText className={`h-3.5 w-3.5 flex-shrink-0 ${isUploaded ? 'text-blue-600' : 'text-gray-400'}`} />
-                                                                <p className="font-medium text-xs truncate">
-                                                                    {doc.label}
-                                                                    <span className="text-blue-500 ml-1 text-[10px]">Opt.</span>
-                                                                </p>
-                                                            </div>
-                                                            {doc.description && (
-                                                                <p className="text-[10px] text-muted-foreground ml-5 mt-0.5 line-clamp-1">
-                                                                    {doc.description}
-                                                                </p>
-                                                            )}
-                                                            {isUploaded && (
-                                                                <p className="text-[10px] text-blue-600 flex items-center gap-1 ml-5 mt-0.5 truncate">
-                                                                    <CheckCircle className="h-2.5 w-2.5"/> {uploadedDoc.file.name}
-                                                                </p>
-                                                            )}
-                                                        </div>
+  const triggerFileInput = (key: string) => {
+    setCurrentUploadType(key);
+    fileInputRef.current?.click();
+  };
 
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            {isUploaded ? (
-                                                                <>
-                                                                    <CheckCircle className="h-4 w-4 text-blue-500" />
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => removeDocument(doc.value)}
-                                                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                                                    >
-                                                                        <X className="h-3 w-3"/>
-                                                                    </Button>
-                                                                </>
-                                                            ) : (
-                                                                <Button
-                                                                    onClick={() => triggerFileInput(doc.value)}
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    className="h-6 text-xs px-2"
-                                                                >
-                                                                    <Upload className="h-3 w-3 mr-1"/> Upload
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    const slot = uploadedDocuments.get(currentUploadType);
+    if (!file || !slot) return;
 
-                        {/* 3. Documents Personnalisés - Format compact */}
-                        <Card>
-                            <CardHeader className="pb-2 pt-3 px-4">
-                                <CardTitle className="text-base font-semibold">Documents Personnalisés (Optionnel)</CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-3 space-y-2">
-                                {customDocsList.map((doc) => (
-                                    <div key={doc.value}
-                                         className="grid grid-cols-1 gap-2 border bg-gray-50 p-3 sm:grid-cols-12 sm:items-center">
-                                        {/* Champ Titre */}
-                                        <div className="sm:col-span-5">
-                                            <Input
-                                                placeholder="Nom du document"
-                                                value={doc.label}
-                                                onChange={(e) => updateCustomDocumentLabel(doc.value, e.target.value)}
-                                                required
-                                                className="bg-white h-7 text-xs"
-                                            />
-                                        </div>
+    if (!validateFileForSlot(file, slot)) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setCurrentUploadType('');
+      return;
+    }
 
-                                        {/* Champ Fichier / État */}
-                                        <div className="min-w-0 sm:col-span-6">
-                                            {doc.file ? (
-                                                <span className="text-[10px] text-green-700 flex items-center gap-1 font-medium truncate">
-                                                    <CheckCircle className="h-2.5 w-2.5 flex-shrink-0"/> {doc.file.name}
-                                                </span>
-                                            ) : (
-                                                <Button
-                                                    onClick={() => triggerFileInput(doc.value)}
-                                                    variant="secondary"
-                                                    className="w-full text-xs h-7"
-                                                    disabled={!doc.label}
-                                                >
-                                                    <Upload className="h-3 w-3 mr-1"/> Fichier
-                                                </Button>
-                                            )}
-                                        </div>
+    setUploadedDocuments((previous) => {
+      const next = new Map(previous);
+      next.set(currentUploadType, {
+        ...slot,
+        file,
+      });
+      return next;
+    });
 
-                                        {/* Bouton Suppression */}
-                                        <div className="flex justify-end sm:col-span-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => removeDocument(doc.value)}
-                                                className="h-6 w-6 p-0"
-                                                title="Supprimer"
-                                            >
-                                                <X className="h-3 w-3 text-red-500"/>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+    toast({
+      title: slot.existingDocumentId ? 'Document prêt à être remplacé' : 'Document ajouté',
+      description: `${slot.label} - ${file.name}`,
+    });
 
-                                <Button
-                                    onClick={addCustomDocumentField}
-                                    variant="outline"
-                                    className="w-full border-dashed border-primary/50 text-primary hover:bg-primary/5 h-8 text-xs"
-                                >
-                                    <PlusCircle className="h-3 w-3 mr-1"/> Ajouter un document
-                                </Button>
-                            </CardContent>
-                        </Card>
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setCurrentUploadType('');
+  };
 
-                        {/* Boutons d'Action Principaux */}
-                        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
-                            <Button variant="outline" onClick={() => navigate(-1)} disabled={uploadMutation.isPending} size="sm" className="h-10 w-full sm:h-8 sm:w-auto">
-                                <ArrowLeft className="h-3 w-3 mr-1"/> Retour
-                            </Button>
-                            <Button
-                                onClick={handleContinuer}
-                                className="h-10 w-full bg-primary text-xs hover:bg-primary/90 sm:h-8 sm:w-auto"
-                                disabled={checklistLoading || checklistError || uploadMutation.isPending || completionPercentage < 100 || uploadSuccess}
-                            >
-                                {uploadMutation.isPending
-                                    ? 'Enregistrement...'
-                                    : uploadSuccess
-                                        ? 'Redirection...'
-                                        : 'Enregistrer et continuer'}
-                            </Button>
-                        </div>
+  const clearPendingFile = (key: string) => {
+    setUploadedDocuments((previous) => {
+      const next = new Map(previous);
+      const doc = next.get(key);
+      if (!doc) return previous;
 
-                    </div>
+      if (doc.isCustom && !doc.existingDocumentId && !doc.file && !doc.label.trim()) {
+        next.delete(key);
+        return next;
+      }
 
-                    {/* COLONNE DROITE: INSTRUCTIONS ET RAPPEL (30%) */}
-                    <div className="lg:col-span-3 space-y-3">
+      if (doc.isCustom && !doc.existingDocumentId) {
+        next.set(key, { ...doc, file: null });
+        return next;
+      }
 
-                        {/* Instructions compactes */}
-                        <Card className="border-primary/20">
-                            <CardHeader className="pb-2 pt-3 px-4">
-                                <CardTitle className="text-sm font-semibold text-primary">Consignes d'Upload</CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-3">
-                                <ul className="space-y-1.5 text-xs text-muted-foreground">
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="text-red-500 font-bold mt-0.5">*</span>
-                                        <span>Documents obligatoires requis</span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="text-primary mt-0.5">•</span>
-                                        <span>Formats: PDF, JPEG, PNG</span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="text-primary mt-0.5">•</span>
-                                        <span>Taille max: 5 Mo par fichier</span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="text-primary mt-0.5">•</span>
-                                        <span>Documents lisibles et de bonne qualité</span>
-                                    </li>
-                                </ul>
-                            </CardContent>
-                        </Card>
+      next.set(key, { ...doc, file: null });
+      return next;
+    });
+  };
 
-                        {/* Rappel Candidature compact */}
-                        <Card className="bg-gray-50 border-gray-200">
-                            <CardHeader className="pb-2 pt-3 px-4">
-                                <CardTitle className="text-sm font-semibold">Rappel</CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-3 space-y-1 text-xs">
-                                <p className="font-medium text-primary">NUPCAN: {numeroCandidature}</p>
-                                <p className="text-muted-foreground truncate">Concours: {candidatureData?.concours?.libcnc}</p>
-                            </CardContent>
-                        </Card>
+  const addCustomDocumentField = () => {
+    const key = `custom_${Date.now()}_${customDocsCounter}`;
+    setCustomDocsCounter((value) => value + 1);
+    setUploadedDocuments((previous) => {
+      const next = new Map(previous);
+      next.set(key, {
+        key,
+        label: '',
+        required: false,
+        file: null,
+        isCustom: true,
+      });
+      return next;
+    });
+  };
 
-                    </div>
-                </div>
-            </div>
-        </Layout>
+  const updateCustomDocumentLabel = (key: string, label: string) => {
+    setUploadedDocuments((previous) => {
+      const next = new Map(previous);
+      const current = next.get(key);
+      if (!current) return previous;
+      next.set(key, { ...current, label });
+      return next;
+    });
+  };
+
+  const removeCustomSlot = (key: string) => {
+    setUploadedDocuments((previous) => {
+      const next = new Map(previous);
+      next.delete(key);
+      return next;
+    });
+  };
+
+  const handleContinuer = () => {
+    const missingRequired = requiredDocs.filter(
+      (doc) => !doc.file && !doc.existingDocumentId,
     );
+
+    if (missingRequired.length > 0) {
+      toast({
+        title: 'Documents manquants',
+        description: missingRequired.map((doc) => doc.label).join(', '),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const invalidCustomDoc = customDocs.find(
+      (doc) => !doc.existingDocumentId && (!!doc.file !== !!doc.label.trim()),
+    );
+    if (invalidCustomDoc) {
+      toast({
+        title: 'Document personnalisé incomplet',
+        description: 'Ajoutez à la fois un titre et un fichier pour chaque document personnalisé.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!numeroCandidature) {
+      toast({
+        title: 'Erreur système',
+        description: 'Numéro de candidature introuvable.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const hasNewFiles = Array.from(uploadedDocuments.values()).some((doc) => doc.file);
+    if (!hasNewFiles) {
+      toast({
+        title: 'Aucune nouvelle pièce',
+        description: 'Votre dossier est déjà à jour.',
+      });
+      navigate(`/dashboard/${encodeURIComponent(numeroCandidature)}?refresh=true`);
+      return;
+    }
+
+    uploadMutation.mutate(numeroCandidature);
+  };
+
+  const renderDocCard = (doc: UploadSlot, tone: 'required' | 'optional') => {
+    const hasExisting = Boolean(doc.existingDocumentId);
+    const hasPending = Boolean(doc.file);
+    const borderClass =
+      tone === 'required'
+        ? hasPending || hasExisting
+          ? 'border-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/20'
+          : 'border-slate-200 dark:border-slate-800'
+        : hasPending || hasExisting
+          ? 'border-blue-300 bg-blue-50/80 dark:bg-blue-950/20'
+          : 'border-slate-200 dark:border-slate-800';
+
+    return (
+      <div key={doc.key} className={`rounded-lg border p-3 ${borderClass}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 shrink-0 text-primary" />
+              <p className="truncate text-sm font-semibold text-foreground">{doc.label}</p>
+              {doc.required ? (
+                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                  Requis
+                </span>
+              ) : (
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+                  Optionnel
+                </span>
+              )}
+            </div>
+            {doc.description ? (
+              <p className="text-xs text-muted-foreground">{doc.description}</p>
+            ) : null}
+            {hasPending ? (
+              <p className="truncate text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                À envoyer: {doc.file?.name}
+              </p>
+            ) : hasExisting ? (
+              <p className="truncate text-xs text-muted-foreground">
+                {statusLabel(doc.existingStatus)}: {doc.existingFileName}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Aucun fichier sélectionné</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={hasExisting && !hasPending ? 'outline' : 'default'}
+              className="h-9 rounded-md px-3 text-xs"
+              onClick={() => triggerFileInput(doc.key)}
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              {hasExisting ? 'Remplacer' : 'Téléverser'}
+            </Button>
+            {hasPending ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-9 rounded-md px-3 text-xs text-red-600"
+                onClick={() => clearPendingFile(doc.key)}
+              >
+                <X className="mr-1.5 h-3.5 w-3.5" />
+                Annuler
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Layout>
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={acceptValue}
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
+        <div className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 rounded-md px-2"
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft className="mr-1.5 h-4 w-4" />
+                Retour
+              </Button>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Pièces du dossier</h1>
+            {concours?.libcnc ? (
+              <p className="mt-1 text-sm text-muted-foreground">{concours.libcnc}</p>
+            ) : null}
+          </div>
+
+          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-background p-4 dark:border-slate-800">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Avancement</span>
+              <span className="text-sm font-semibold text-primary">
+                {completedRequiredDocs.length}/{requiredDocs.length}
+              </span>
+            </div>
+            <Progress value={completionPercentage} className="h-2 rounded-full" />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Seules les pièces réellement exigées par le concours sélectionné sont demandées ici.
+            </p>
+          </div>
+        </div>
+
+        {(uploadMutation.isPending || uploadMutation.isError || uploadSuccess) ? (
+          <div className="mb-5 rounded-lg border px-4 py-3 text-sm">
+            {uploadMutation.isPending ? (
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <Upload className="h-4 w-4 animate-pulse" />
+                Envoi des documents en cours...
+              </div>
+            ) : uploadSuccess ? (
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle className="h-4 w-4" />
+                Documents enregistrés. Redirection en cours...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                <AlertCircle className="h-4 w-4" />
+                Une erreur est survenue pendant l’envoi.
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {checklistQuery.isLoading ? (
+          <Card className="rounded-lg border-slate-200 dark:border-slate-800">
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              Chargement des documents requis...
+            </CardContent>
+          </Card>
+        ) : checklistQuery.isError ? (
+          <Card className="rounded-lg border-red-200 dark:border-red-900">
+            <CardContent className="py-12 text-center">
+              <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
+              <p className="text-sm font-medium text-foreground">
+                Impossible de charger la checklist documentaire.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 rounded-md"
+                onClick={() => checklistQuery.refetch()}
+              >
+                Réessayer
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_360px]">
+            <div className="space-y-4">
+              {requiredDocs.length > 0 ? (
+                <Card className="rounded-lg border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      Documents obligatoires
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {requiredDocs.map((doc) => renderDocCard(doc, 'required'))}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {optionalDocs.length > 0 ? (
+                <Card className="rounded-lg border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      Documents optionnels
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {optionalDocs.map((doc) => renderDocCard(doc, 'optional'))}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              <Card className="rounded-lg border-slate-200 dark:border-slate-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Documents complémentaires</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {customDocs.map((doc) => (
+                    <div
+                      key={doc.key}
+                      className="grid gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto]"
+                    >
+                      <Input
+                        value={doc.label}
+                        placeholder="Nom du document"
+                        className="h-10 rounded-md"
+                        onChange={(event) => updateCustomDocumentLabel(doc.key, event.target.value)}
+                        disabled={Boolean(doc.existingDocumentId)}
+                      />
+                      <div className="min-w-0">
+                        {doc.file ? (
+                          <div className="flex h-10 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300">
+                            <span className="truncate">{doc.file.name}</span>
+                          </div>
+                        ) : doc.existingDocumentId ? (
+                          <div className="flex h-10 items-center rounded-md border border-slate-200 px-3 text-xs text-muted-foreground dark:border-slate-800">
+                            <span className="truncate">
+                              {statusLabel(doc.existingStatus)}: {doc.existingFileName}
+                            </span>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 w-full rounded-md"
+                            disabled={!doc.label.trim()}
+                            onClick={() => triggerFileInput(doc.key)}
+                          >
+                            <Upload className="mr-1.5 h-3.5 w-3.5" />
+                            Ajouter le fichier
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {doc.existingDocumentId ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 rounded-md px-3 text-xs"
+                            onClick={() => triggerFileInput(doc.key)}
+                          >
+                            Remplacer
+                          </Button>
+                        ) : null}
+                        {doc.file ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-10 rounded-md px-3 text-xs text-red-600"
+                            onClick={() => clearPendingFile(doc.key)}
+                          >
+                            Annuler
+                          </Button>
+                        ) : null}
+                        {!doc.existingDocumentId ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-10 rounded-md px-3 text-xs text-red-600"
+                            onClick={() => removeCustomSlot(doc.key)}
+                          >
+                            <X className="mr-1.5 h-3.5 w-3.5" />
+                            Supprimer
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full rounded-md border-dashed"
+                    onClick={addCustomDocumentField}
+                  >
+                    <PlusCircle className="mr-1.5 h-4 w-4" />
+                    Ajouter un document complémentaire
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-md"
+                  disabled={uploadMutation.isPending}
+                  onClick={() => navigate(-1)}
+                >
+                  <ArrowLeft className="mr-1.5 h-4 w-4" />
+                  Retour
+                </Button>
+                <Button
+                  type="button"
+                  className="h-10 rounded-md px-5"
+                  disabled={checklistQuery.isLoading || uploadMutation.isPending || uploadSuccess}
+                  onClick={handleContinuer}
+                >
+                  {uploadMutation.isPending
+                    ? 'Enregistrement...'
+                    : uploadSuccess
+                      ? 'Redirection...'
+                      : 'Enregistrer et continuer'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Card className="rounded-lg border-slate-200 dark:border-slate-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Consignes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <p>Les formats autorisés dépendent du document demandé.</p>
+                  <p>Un document déjà présent peut être remplacé sans recréer toute la candidature.</p>
+                  <p>Les pièces requises affichées correspondent au concours et à la filière sélectionnés.</p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-lg border-slate-200 dark:border-slate-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Rappel dossier</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <p className="font-medium text-primary">NUPCAN: {numeroCandidature}</p>
+                  <p className="text-muted-foreground">{candidatureData?.concours?.libcnc || '-'}</p>
+                  <p className="text-muted-foreground">
+                    Progression: {completionPercentage}% des documents obligatoires couverts
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
 };
 
 export default Documents;
