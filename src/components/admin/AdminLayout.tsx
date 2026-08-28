@@ -61,22 +61,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
             ];
         }
 
-        // Sub-admin Notes
-        if (admin?.role === 'sub_admin' && admin?.admin_role === 'notes') {
-            return [
-                ...baseItems,
-                { path: '/admin/concours', label: 'Concours', icon: GraduationCap },
-                { path: '/admin/profile', label: 'Profil', icon: Settings }
-            ];
-        }
-
-        // Sub-admin Documents
-        if (admin?.role === 'sub_admin' && admin?.admin_role === 'documents') {
-            return [
-                ...baseItems,
-                { path: '/admin/concours', label: 'Concours', icon: GraduationCap },
-                { path: '/admin/profile', label: 'Profil', icon: Settings }
-            ];
+        if (admin?.role === 'sub_admin') {
+            const role = admin.admin_role;
+            const items = [...baseItems];
+            if (['applications_manager', 'grades_entry', 'grades_validator'].includes(role)) items.push({ path: '/admin/concours', label: 'Concours', icon: GraduationCap });
+            if (role === 'applications_manager') items.push({ path: '/admin/candidats', label: 'Candidatures', icon: Users });
+            if (['applications_manager', 'documents_validator', 'documents_viewer'].includes(role)) items.push({ path: '/admin/dossiers', label: 'Documents', icon: FileText });
+            if (role === 'grades_entry' || role === 'grades_validator') items.push({ path: '/admin/notes', label: 'Notes', icon: GraduationCap });
+            if (role === 'payments_viewer') items.push({ path: '/admin/paiements', label: 'Paiements', icon: DollarSign });
+            if (role === 'reports_viewer') items.push({ path: '/admin/statistiques', label: 'Statistiques', icon: BarChart3 });
+            if (role === 'messaging_agent') items.push({ path: '/admin/messagerie', label: 'Messages', icon: Settings });
+            items.push({ path: '/admin/profile', label: 'Profil', icon: Settings });
+            return items;
         }
 
         return baseItems;

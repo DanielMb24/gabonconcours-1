@@ -7,7 +7,9 @@ interface Admin {
     nom: string;
     prenom: string;
     email: string;
-    admin_role : 'notes' | 'documents';
+    admin_role : string;
+    subAdminRole?: string;
+    permissions?: string[];
     role: 'super_admin' | 'admin' | 'reviewer' | 'finance' | 'admin_etablissement'| 'sub_admin';
     etablissement_id?: number;
     etablissement_nom?: string;
