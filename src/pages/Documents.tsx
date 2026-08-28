@@ -75,6 +75,25 @@ const acceptFromMimeTypes = (mimeTypes?: string[]) => {
 const statusLabel = (status?: string) =>
   status === 'valide' ? 'Validé' : status === 'rejete' ? 'À remplacer' : 'Déjà téléversé';
 
+const formatMimeTypes = (mimeTypes?: string[]) => {
+  const source = mimeTypes?.length ? mimeTypes : DEFAULT_MIME_TYPES;
+  const labels = source.map((mimeType) => {
+    switch (mimeType) {
+      case 'application/pdf':
+        return 'PDF';
+      case 'image/jpeg':
+        return 'JPG';
+      case 'image/png':
+        return 'PNG';
+      case 'image/webp':
+        return 'WEBP';
+      default:
+        return mimeType;
+    }
+  });
+  return Array.from(new Set(labels)).join(', ');
+};
+
 const Documents = () => {
   const { numeroCandidature } = useParams<{ numeroCandidature: string }>();
   const navigate = useNavigate();
@@ -82,6 +101,7 @@ const Documents = () => {
   const [uploadedDocuments, setUploadedDocuments] = useState<Map<string, UploadSlot>>(new Map());
   const [customDocsCounter, setCustomDocsCounter] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadErrorMessage, setUploadErrorMessage] = useState('');
   const [currentUploadType, setCurrentUploadType] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -260,6 +280,7 @@ const Documents = () => {
     },
     onSuccess: async () => {
       setUploadSuccess(true);
+      setUploadErrorMessage('');
       toast({
         title: 'Documents enregistrés',
         description: 'Les pièces ont bien été prises en compte.',
@@ -278,6 +299,7 @@ const Documents = () => {
     },
     onError: (error: Error) => {
       setUploadSuccess(false);
+      setUploadErrorMessage(error.message || 'Une erreur est survenue pendant l’envoi.');
       toast({
         title: 'Erreur d’upload',
         description: error.message || 'Une erreur est survenue pendant l’envoi.',
@@ -287,6 +309,7 @@ const Documents = () => {
   });
 
   const triggerFileInput = (key: string) => {
+    setUploadErrorMessage('');
     setCurrentUploadType(key);
     fileInputRef.current?.click();
   };
@@ -310,6 +333,7 @@ const Documents = () => {
       });
       return next;
     });
+    setUploadErrorMessage('');
 
     toast({
       title: slot.existingDocumentId ? 'Document prêt à être remplacé' : 'Document ajouté',
@@ -455,6 +479,9 @@ const Documents = () => {
             {doc.description ? (
               <p className="text-xs text-muted-foreground">{doc.description}</p>
             ) : null}
+            <p className="text-xs text-muted-foreground">
+              Formats: {formatMimeTypes(doc.acceptedMimeTypes)}. Taille max: {Math.round((doc.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES) / (1024 * 1024))} Mo
+            </p>
             {hasPending ? (
               <p className="truncate text-xs font-medium text-emerald-700 dark:text-emerald-300">
                 À envoyer: {doc.file?.name}
@@ -556,7 +583,7 @@ const Documents = () => {
             ) : (
               <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
                 <AlertCircle className="h-4 w-4" />
-                Une erreur est survenue pendant l’envoi.
+                {uploadErrorMessage || 'Une erreur est survenue pendant l’envoi.'}
               </div>
             )}
           </div>
