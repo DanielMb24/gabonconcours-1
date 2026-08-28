@@ -34,7 +34,7 @@
         --input: 240 5.9% 90%;
         --ring: 217 91% 60%;
 
-        --radius: 0.375rem;
+        --radius: 0.25rem;
 
         --sidebar-background: 0 0% 98%;
         --sidebar-foreground: 240 5.3% 26.1%;
@@ -96,17 +96,23 @@
     }
 
     button:not([role="switch"]) {
-        border-radius: 0.375rem !important;
+        border-radius: 0.25rem !important;
     }
 }
 
 /* Harmonisation globale : surfaces sobres, sans animation de carte. */
-[class~="rounded-2xl"] { border-radius: 0.5rem !important; }
-[class~="rounded-xl"] { border-radius: 0.375rem !important; }
+[class~="rounded-3xl"],
+[class~="rounded-2xl"],
+[class~="rounded-xl"],
+[class~="rounded-lg"],
+[class~="rounded-md"] { border-radius: 0.25rem !important; }
 [class*="hover:-translate-y"]:hover,
+[class*="hover:translate-y"]:hover,
 [class*="hover:scale-"]:hover { transform: none !important; }
 [class*="hover:shadow-soft"]:hover,
-[class*="hover:shadow-lg"]:hover { box-shadow: 0 1px 2px rgb(0 0 0 / 0.05) !important; }
+[class*="hover:shadow-lg"]:hover,
+[class*="hover:shadow-xl"]:hover,
+[class*="hover:shadow-2xl"]:hover { box-shadow: none !important; }
 
 /* Gradient backgrounds for enhanced visual appeal */
 .gradient-bg {

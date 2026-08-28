@@ -29,7 +29,7 @@ export default function DocumentDetailsDialog({ document, onClose, supplemental,
           <div><dt className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" />Ajouté le</dt><dd>{document.created_at ? new Date(document.created_at).toLocaleString('fr-FR') : '—'}</dd></div>
         </dl>
         {document.commentaire_validation&&<div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"><strong>Motif du rejet :</strong> {document.commentaire_validation}</div>}
-        {document.document_statut==='rejete'&&<Button className="w-full" onClick={()=>onReplace(document)}><RefreshCw className="mr-2 h-4 w-4" />Remplacer le fichier</Button>}
+        <Button className="w-full" onClick={()=>onReplace(document)}><RefreshCw className="mr-2 h-4 w-4" />Changer le fichier</Button>
         <Button variant="outline" className="w-full" onClick={()=>window.open(preview,'_blank','noopener,noreferrer')}>Ouvrir dans un nouvel onglet</Button>
       </div>
     </div>
