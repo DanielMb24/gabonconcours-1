@@ -74,8 +74,16 @@ export const documentService = {
 
   async getChecklist(nupcan: string): Promise<DocumentChecklist> {
     const response = await api.get(candidatePortalRoutes.documentChecklist(nupcan));
-    const data = response.data.data;
-    return { ...data, checklist: data.checklist.map((item: any) => ({ requirement: item.requirement, document: item.document ? mapDocument(item.document) : null })), supplemental: data.supplemental.map(mapDocument) };
+    const data = response.data.data || {};
+    const checklist = Array.isArray(data.checklist) ? data.checklist : [];
+    const supplemental = Array.isArray(data.supplemental) ? data.supplemental : [];
+    const summary = data.summary || { required: 0, submitted: 0, approved: 0, missing: 0, rejected: 0 };
+    return {
+      nupcan: data.nupcan || nupcan,
+      checklist: checklist.map((item: any) => ({ requirement: item.requirement, document: item.document ? mapDocument(item.document) : null })),
+      supplemental: supplemental.map(mapDocument),
+      summary,
+    };
   },
 
   async uploadDocument(formData: FormData): Promise<Document> {

@@ -104,6 +104,7 @@ const Documents = () => {
   const [uploadErrorMessage, setUploadErrorMessage] = useState('');
   const [currentUploadType, setCurrentUploadType] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (numeroCandidature && !candidatureData) {
@@ -314,6 +315,11 @@ const Documents = () => {
     fileInputRef.current?.click();
   };
 
+  const triggerMultiFileInput = () => {
+    setUploadErrorMessage('');
+    multiFileInputRef.current?.click();
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     const slot = uploadedDocuments.get(currentUploadType);
@@ -342,6 +348,50 @@ const Documents = () => {
 
     if (fileInputRef.current) fileInputRef.current.value = '';
     setCurrentUploadType('');
+  };
+
+  const handleMultiFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (!selectedFiles.length) return;
+
+    const orderedSlots = [...requiredDocs, ...optionalDocs].filter((slot) => !slot.file);
+    if (!orderedSlots.length) {
+      toast({
+        title: 'Aucune pièce à remplir',
+        description: 'Toutes les pièces visibles ont déjà un fichier associé.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    const assignments = orderedSlots.slice(0, selectedFiles.length);
+    const nextEntries: Array<[string, UploadSlot]> = [];
+    const rejectedFiles: string[] = [];
+
+    assignments.forEach((slot, index) => {
+      const file = selectedFiles[index];
+      if (!file || !validateFileForSlot(file, slot)) {
+        rejectedFiles.push(file?.name || `Fichier ${index + 1}`);
+        return;
+      }
+      nextEntries.push([slot.key, { ...slot, file }]);
+    });
+
+    if (nextEntries.length) {
+      setUploadedDocuments((previous) => {
+        const next = new Map(previous);
+        nextEntries.forEach(([key, slot]) => next.set(key, slot));
+        return next;
+      });
+      setUploadErrorMessage('');
+    }
+
+    toast({
+      title: 'Sélection multiple appliquée',
+      description: `${nextEntries.length} fichier(s) affecté(s) dans l’ordre des pièces affichées${rejectedFiles.length ? `. ${rejectedFiles.length} rejeté(s).` : '.'}`,
+    });
+
+    event.target.value = '';
   };
 
   const clearPendingFile = (key: string) => {
@@ -534,6 +584,14 @@ const Documents = () => {
           onChange={handleFileSelect}
           className="hidden"
         />
+        <input
+          ref={multiFileInputRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
+          multiple
+          onChange={handleMultiFileSelect}
+          className="hidden"
+        />
 
         <div className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -546,6 +604,15 @@ const Documents = () => {
               >
                 <ArrowLeft className="mr-1.5 h-4 w-4" />
                 Retour
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-md px-3"
+                onClick={triggerMultiFileInput}
+              >
+                <Upload className="mr-1.5 h-4 w-4" />
+                Sélection multiple
               </Button>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Pièces du dossier</h1>

@@ -24,6 +24,7 @@ import Layout from '@/components/Layout';
 import {useCandidatureState} from '@/hooks/useCandidatureState';
 import {apiService} from '@/services/api';
 import {validatePhoneNumber, formatPhoneDisplay} from '@/utils/phoneValidation';
+import {documentService} from '@/services/documentService';
 
 const Paiement = () => {
     const {nupcan} = useParams<{ nupcan: string }>();
@@ -49,16 +50,23 @@ const Paiement = () => {
     useEffect(() => {
         if (!numeroCandidature) return;
         setEligibilityLoading(true);
-        apiService.makeRequest<any>(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET')
-            .then(response => {
+        Promise.all([
+            apiService.makeRequest<any>(`/applications/${encodeURIComponent(numeroCandidature)}/payment-eligibility`, 'GET'),
+            documentService.getChecklist(numeroCandidature).catch(() => null),
+        ])
+            .then(([response, checklist]) => {
                 const data = response.data || {eligible: false};
                 setPaymentEligibility(data);
                 if (data.paymentContext) {
                     const {candidat, concours, nupcan} = data.paymentContext;
+                    const existingDocuments = [
+                        ...((checklist?.checklist || []).map((item) => item.document).filter(Boolean)),
+                        ...(checklist?.supplemental || []),
+                    ];
                     setCandidatureState({
                         candidatData: {id: 0, nomcan: candidat.nomcan, prncan: candidat.prncan, maican: '', telcan: '', dtncan: '', ldncan: '', phtcan: null as any, proorg: 0, proact: 0, proaff: 0, niveau_id: 0, nupcan},
                         concoursData: {...concours, id: concours.id || 0, fracnc: String(concours.fracnc || 0), agecnc: concours.agecnc || 0, debcnc: concours.debcnc || '', fincnc: concours.fincnc || '', etablissement_num: 0},
-                        documentsData: [], paiementData: data.payment || null,
+                        documentsData: existingDocuments as any, paiementData: data.payment || null,
                         progression: {etapeActuelle: data.alreadyPaid ? 'complete' : 'paiement', etapesCompletes: ['inscription', 'documents'], pourcentage: data.alreadyPaid ? 100 : 75}
                     });
                 }
