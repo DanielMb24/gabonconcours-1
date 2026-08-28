@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 interface CrudManagerProps {
     entity: 'concours' | 'etablissements' | 'filieres' | 'matieres';
@@ -104,8 +105,8 @@ const CrudManager: React.FC<CrudManagerProps> = ({ entity, title }) => {
         setIsOpen(true);
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
+    const handleDelete = async (id: number) => {
+        if (await confirmAction({title:'Supprimer cet élément ?',description:'Cette action est définitive.',confirmLabel:'Supprimer'})) {
             deleteMutation.mutate(id);
         }
     };

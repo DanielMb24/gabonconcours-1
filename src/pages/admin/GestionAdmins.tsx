@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {confirmAction} from '@/components/ui/confirm-action';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
@@ -137,8 +138,8 @@ const GestionAdmins = () => {
         },
         onError: (error:any) => toast({title:'Erreur',description:error.message||'Envoi impossible',variant:'destructive'}),
     });
-    const regenerate = (admin:any) => window.confirm(`Régénérer le mot de passe de ${admin.email} ? L'ancien mot de passe cessera immédiatement de fonctionner.`) && regeneratePasswordMutation.mutate(admin.id);
-    const resend = (admin:any) => window.confirm(`Créer un nouveau mot de passe et envoyer les identifiants à ${admin.email} ?`) && resendCredentialsMutation.mutate(admin.id);
+    const regenerate = async (admin:any) => (await confirmAction({title:'Régénérer le mot de passe ?',description:`L’ancien mot de passe de ${admin.email} cessera immédiatement de fonctionner.`,confirmLabel:'Régénérer'})) && regeneratePasswordMutation.mutate(admin.id);
+    const resend = async (admin:any) => (await confirmAction({title:'Renvoyer les identifiants ?',description:`Un nouveau mot de passe sera créé et envoyé à ${admin.email}.`,confirmLabel:'Créer et envoyer',destructive:false})) && resendCredentialsMutation.mutate(admin.id);
 
     const handleCreateAdmin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -382,8 +383,8 @@ const GestionAdmins = () => {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => {
-                                                            if (confirm('Êtes-vous sûr de vouloir supprimer cet admin ?')) {
+                                                        onClick={async () => {
+                                                            if (await confirmAction({title:'Supprimer cet administrateur ?',description:'Son accès sera révoqué définitivement.',confirmLabel:'Supprimer'})) {
                                                                 deleteAdminMutation.mutate(admin.id);
                                                             }
                                                         }}

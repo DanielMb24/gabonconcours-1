@@ -4,6 +4,7 @@ import {toast} from '@/hooks/use-toast';
 import {apiService} from '@/services/api';
 import CrudTable from '@/components/admin/CrudTable';
 import FormDialog from '@/components/admin/FormDialog';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 const GestionEtablissements = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -153,8 +154,8 @@ const GestionEtablissements = () => {
         setDialogOpen(true);
     };
 
-    const handleDelete = (item: any) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cet établissement ?')) {
+    const handleDelete = async (item: any) => {
+        if (await confirmAction({title:'Supprimer cet établissement ?',description:'Vérifiez qu’aucun concours actif ne dépend de cet établissement.',confirmLabel:'Supprimer'})) {
             deleteMutation.mutate(item.id.toString());
         }
     };

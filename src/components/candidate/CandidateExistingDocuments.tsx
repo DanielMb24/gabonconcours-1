@@ -5,6 +5,7 @@ import {Badge} from '@/components/ui/badge';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {Eye, Edit, Trash2, FileText, Calendar} from 'lucide-react';
 import {toast} from '@/hooks/use-toast';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 interface Document {
     id: number;
@@ -60,7 +61,7 @@ const CandidateExistingDocuments: React.FC<CandidateExistingDocumentsProps> = ({
     };
 
     const handleDeleteDocument = async (document: Document) => {
-        if (confirm(`Êtes-vous sûr de vouloir supprimer le document "${document.nomdoc}" ?`)) {
+        if (await confirmAction({title:'Supprimer ce document ?',description:`Le document « ${document.nomdoc} » sera supprimé définitivement.`,confirmLabel:'Supprimer'})) {
             try {
                 // Appel API pour supprimer le document
                 toast({

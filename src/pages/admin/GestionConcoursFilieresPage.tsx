@@ -9,6 +9,7 @@ import { apiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import ErrorModal from '@/components/modals/ErrorModal';
 import SuccessModal from '@/components/modals/SuccessModal';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 const GestionConcoursFilieresPage = () => {
     const queryClient = useQueryClient();
@@ -125,8 +126,8 @@ const GestionConcoursFilieresPage = () => {
         addAssociationMutation.mutate();
     };
 
-    const handleDeleteAssociation = (id: number) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette association ?')) {
+    const handleDeleteAssociation = async (id: number) => {
+        if (await confirmAction({title:'Supprimer cette association ?',description:'La filière ne sera plus rattachée au concours.',confirmLabel:'Supprimer'})) {
             deleteAssociationMutation.mutate(id);
         }
     };

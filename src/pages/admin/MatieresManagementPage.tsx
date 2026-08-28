@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/use-toast';
 import { apiService } from '@/services/api';
 import { Pencil, Trash2, Plus, BookOpen } from 'lucide-react';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 const MatieresManagementPage = () => {
     const queryClient = useQueryClient();
@@ -126,8 +127,8 @@ const MatieresManagementPage = () => {
         setIsEditOpen(true);
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette matière ?')) {
+    const handleDelete = async (id: number) => {
+        if (await confirmAction({title:'Supprimer cette matière ?',description:'La matière sera retirée du système.',confirmLabel:'Supprimer'})) {
             deleteMutation.mutate(id);
         }
     };

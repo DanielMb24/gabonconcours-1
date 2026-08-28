@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import {confirmAction} from '@/components/ui/confirm-action';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -219,7 +220,7 @@ const EnhancedDocumentsManager: React.FC<EnhancedDocumentsManagerProps> = ({
   };
 
   const handleDelete = async (docId: number, nomdoc: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le document "${nomdoc}" ?`)) {
+    if (!(await confirmAction({title:'Supprimer ce document ?',description:`Le document « ${nomdoc} » sera supprimé définitivement.`,confirmLabel:'Supprimer'}))) {
       return;
     }
 

@@ -14,6 +14,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { Plus, Trash2, Save, BookOpen, School } from 'lucide-react';
 import { apiService } from '@/services/api';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 const ConcoursFilieresManagement = () => {
     const [concours, setConcours] = useState<any[]>([]);
@@ -175,7 +176,7 @@ const ConcoursFilieresManagement = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer cette association ?')) return;
+        if (!(await confirmAction({title:'Supprimer cette association ?',description:'La filière ne sera plus associée à ce concours.',confirmLabel:'Supprimer'}))) return;
 
         try {
             const response = await apiService.makeRequest(`/concours-filieres/${id}`, 'DELETE');

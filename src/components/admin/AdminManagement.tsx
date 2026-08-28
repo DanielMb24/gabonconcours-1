@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import {confirmAction} from '@/components/ui/confirm-action';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,7 +131,7 @@ const AdminManagement: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer cet administrateur ?')) {
+        if (!(await confirmAction({title:'Supprimer cet administrateur ?',description:'Son accès sera révoqué et cette action ne pourra pas être annulée.',confirmLabel:'Supprimer'}))) {
             return;
         }
 

@@ -10,6 +10,7 @@ import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
 import {useRealtimeData} from '@/hooks/useRealtimeData';
 import {toast} from '@/hooks/use-toast';
 import {apiService} from '@/services/api';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 const Paiements = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +31,7 @@ const Paiements = () => {
     };
 
     const handleRejectPayment = async (paiementId: string | number) => {
-        if(!window.confirm('Rejeter ce paiement ?')) return;
+        if(!(await confirmAction({title:'Rejeter ce paiement ?',description:'Le paiement sera marqué comme rejeté et le candidat en sera informé.',confirmLabel:'Rejeter'}))) return;
         const response = await apiService.makeRequest(`/paiements/${paiementId}/status`, 'PATCH', {statut:'rejete'});
         toast({title:response.success?"Paiement rejeté":"Erreur",description:response.message,variant:'destructive'});
     };

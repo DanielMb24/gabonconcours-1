@@ -4,6 +4,7 @@ import {toast} from '@/hooks/use-toast';
 import {apiService} from '@/services/api';
 import CrudTable from '@/components/admin/CrudTable';
 import FormDialog from '@/components/admin/FormDialog';
+import {confirmAction} from '@/components/ui/confirm-action';
 
 const GestionFilieres = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -141,8 +142,8 @@ const GestionFilieres = () => {
         setDialogOpen(true);
     };
 
-    const handleDelete = (item: any) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette filière ?')) {
+    const handleDelete = async (item: any) => {
+        if (await confirmAction({title:'Supprimer cette filière ?',description:'Cette filière ne sera plus disponible dans les concours.',confirmLabel:'Supprimer'})) {
             deleteMutation.mutate(item.id.toString());
         }
     };
