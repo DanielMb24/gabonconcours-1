@@ -10,9 +10,6 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -36,11 +33,13 @@ import {
 } from "@/components/ui/dialog"
 import {Badge} from "@/components/ui/badge";
 import {CheckCircle, XCircle, Loader2, Pencil, Archive} from 'lucide-react';
+import {ConfirmDialog} from '@/components/ui/confirm-dialog';
 
 const Concours = () => {
     const [open, setOpen] = useState(false)
     const [editing, setEditing] = useState<any>(null)
-    const [editForm, setEditForm] = useState<any>({})
+    const [editLoading, setEditLoading] = useState(false)
+    const [archiveTarget, setArchiveTarget] = useState<any>(null)
     const queryClient = useQueryClient()
 
     // Requêtes
@@ -88,12 +87,16 @@ const Concours = () => {
             });
         },
     });
-    const updateMutation = useMutation({
-        mutationFn: ({id, data}: any) => apiService.makeRequest(`/concours/${id}`, 'PUT', data),
-        onSuccess: () => { queryClient.invalidateQueries({queryKey: ['admin-concours']}); setEditing(null); toast({title:'Concours modifié',description:'Les informations ont été enregistrées.'}); },
-        onError: (error: any) => toast({title:'Erreur',description:error.message || 'Modification impossible',variant:'destructive'}),
-    });
-    const startEdit = (item: any) => { setEditing(item); setEditForm({libcnc:item.libcnc||'',description_concours:item.description_concours||'',etablissement_id:String(item.etablissement_id||''),niveau_id:String(item.niveau_id||''),debcnc:item.debcnc?String(item.debcnc).slice(0,10):'',fincnc:item.fincnc?String(item.fincnc).slice(0,10):'',fracnc:item.fracnc||0,stacnc:item.stacnc||'0'}); };
+    const startEdit = async (item: any) => {
+        setEditLoading(true);
+        try {
+            const response = await apiService.makeRequest(`/concours/${item.id}`, 'GET');
+            if (!response.success) throw new Error(response.message || 'Chargement impossible');
+            setEditing(response.data);
+        } catch (error: any) {
+            toast({title:'Erreur',description:error.message || 'Impossible de charger le concours',variant:'destructive'});
+        } finally { setEditLoading(false); }
+    };
 
     // @ts-ignore
     return (
@@ -127,18 +130,9 @@ const Concours = () => {
                     </DialogContent>
                 </Dialog>
                 <Dialog open={Boolean(editing)} onOpenChange={(value) => !value && setEditing(null)}>
-                    <DialogContent className="sm:max-w-2xl">
-                        <DialogHeader><DialogTitle>Modifier le concours</DialogTitle><DialogDescription>Modifiez les informations principales et les relations.</DialogDescription></DialogHeader>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2"><Label>Intitulé</Label><Input value={editForm.libcnc||''} onChange={e=>setEditForm({...editForm,libcnc:e.target.value})}/></div>
-                            <div><Label>Établissement</Label><Select value={editForm.etablissement_id||''} onValueChange={v=>setEditForm({...editForm,etablissement_id:v})}><SelectTrigger><SelectValue placeholder="Établissement"/></SelectTrigger><SelectContent>{etablissements.map((e:any)=><SelectItem key={e.id} value={String(e.id)}>{e.nomets}</SelectItem>)}</SelectContent></Select></div>
-                            <div><Label>Niveau</Label><Select value={editForm.niveau_id||''} onValueChange={v=>setEditForm({...editForm,niveau_id:v})}><SelectTrigger><SelectValue placeholder="Niveau"/></SelectTrigger><SelectContent>{niveaux.map((n:any)=><SelectItem key={n.id} value={String(n.id)}>{n.nomniv}</SelectItem>)}</SelectContent></Select></div>
-                            <div><Label>Ouverture</Label><Input type="date" value={editForm.debcnc||''} onChange={e=>setEditForm({...editForm,debcnc:e.target.value})}/></div>
-                            <div><Label>Clôture</Label><Input type="date" value={editForm.fincnc||''} onChange={e=>setEditForm({...editForm,fincnc:e.target.value})}/></div>
-                            <div><Label>Frais (FCFA)</Label><Input type="number" min="0" value={editForm.fracnc||0} onChange={e=>setEditForm({...editForm,fracnc:Number(e.target.value)})}/></div>
-                            <div><Label>Statut</Label><Select value={editForm.stacnc||'0'} onValueChange={v=>setEditForm({...editForm,stacnc:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Ouvert</SelectItem><SelectItem value="0">Fermé</SelectItem></SelectContent></Select></div>
-                        </div>
-                        <div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditing(null)}>Annuler</Button><Button onClick={()=>updateMutation.mutate({id:editing.id,data:editForm})} disabled={updateMutation.isPending}>{updateMutation.isPending&&<Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Enregistrer</Button></div>
+                    <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader><DialogTitle>Modifier le concours</DialogTitle><DialogDescription>Formulaire complet : informations, dates, pièces demandées, critères et contacts.</DialogDescription></DialogHeader>
+                        {editing && <CreateConcoursMultiStep mode="edit" concoursId={String(editing.id)} initialData={editing} onClose={()=>setEditing(null)} onSuccess={()=>queryClient.invalidateQueries({queryKey:['admin-concours']})} />}
                     </DialogContent>
                 </Dialog>
 
@@ -200,7 +194,7 @@ const Concours = () => {
                                             </TableCell>
 
                                             <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={()=>startEdit(concoursItem)}><Pencil className="h-4 w-4 mr-1"/>Modifier</Button><Button variant="destructive" size="sm" onClick={() => window.confirm(`Archiver le concours « ${concoursItem.libcnc} » ?`) && deleteMutation.mutate(concoursItem.id)} disabled={deleteMutation.isPending}><Archive className="h-4 w-4 mr-1"/>Archiver</Button></div>
+                                                <div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={()=>startEdit(concoursItem)} disabled={editLoading}><Pencil className="h-4 w-4 mr-1"/>Modifier</Button><Button variant="destructive" size="sm" onClick={() => setArchiveTarget(concoursItem)} disabled={deleteMutation.isPending}><Archive className="h-4 w-4 mr-1"/>Archiver</Button></div>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -210,6 +204,7 @@ const Concours = () => {
                     )}
                 </div>
             </CardContent>
+            <ConfirmDialog open={Boolean(archiveTarget)} onOpenChange={value=>!value&&setArchiveTarget(null)} title="Archiver ce concours ?" description={`Le concours « ${archiveTarget?.libcnc || ''} » ne sera plus proposé aux candidats. Les candidatures existantes seront conservées.`} confirmLabel="Archiver" pending={deleteMutation.isPending} onConfirm={()=>archiveTarget&&deleteMutation.mutate(archiveTarget.id,{onSuccess:()=>setArchiveTarget(null)})} />
         </Card>
     );
 };

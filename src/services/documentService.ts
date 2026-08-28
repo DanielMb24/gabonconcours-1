@@ -11,6 +11,11 @@ export interface Document {
   requirement_id?: string | null;
   obligatoire?: boolean;
   commentaire_validation?: string;
+  nom_fichier?: string;
+  mime_type?: string;
+  version?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DocumentRequirement {
@@ -35,7 +40,8 @@ const mapDocument = (doc: any): Document => ({
   document_statut: doc.document_statut || doc.statut || 'en_attente',
   url: doc.docdsr || doc.nom_fichier || '', taille: doc.taille,
   requirement_id: doc.requirement_id, obligatoire: doc.obligatoire,
-  commentaire_validation: doc.commentaire_validation,
+  commentaire_validation: doc.commentaire_validation, nom_fichier: doc.nom_fichier,
+  mime_type: doc.mime_type, version: doc.version, created_at: doc.created_at, updated_at: doc.updated_at,
 });
 
 export interface DocumentData {
@@ -129,6 +135,11 @@ export const documentService = {
 
   async updateDocument(id: string, file: File): Promise<Document> {
     return this.replaceDocument(id, file);
+  },
+
+  async renameDocument(id: string, nomdoc: string): Promise<Document> {
+    const response = await api.patch(`/documents/${id}`, { nomdoc });
+    return mapDocument(response.data.data);
   },
 
   async updateDocumentStatus(id: string, statut: string, commentaire?: string): Promise<any> {

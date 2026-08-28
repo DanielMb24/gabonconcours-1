@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
 import { useQuery } from '@tanstack/react-query';
 
-interface ConcoursFormData {
+export interface ConcoursFormData {
     // Étape 1: Informations de base
     libcnc: string;
     etablissement_id: string;
@@ -92,14 +92,26 @@ const DOCUMENTS_DEFAULT = [
 interface CreateConcoursMultiStepProps {
     onClose: () => void;
     onSuccess: () => void;
+    mode?: 'create' | 'edit';
+    concoursId?: string;
+    initialData?: any;
 }
 
-export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = ({ onClose, onSuccess }) => {
+const parseList = (value: any, fallback: any[] = []) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+        try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : fallback; } catch { return fallback; }
+    }
+    return fallback;
+};
+const dateValue = (value: any) => value ? String(value).slice(0, 10) : '';
+
+export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = ({ onClose, onSuccess, mode = 'create', concoursId, initialData }) => {
     const { toast } = useToast();
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [formData, setFormData] = useState<ConcoursFormData>({
+    const [formData, setFormData] = useState<ConcoursFormData>(() => ({
         libcnc: '',
         etablissement_id: '',
         niveau_id: '',
@@ -139,7 +151,17 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
         contact_telephone: '',
         lieu_examen: '',
         informations_complementaires: '',
-    });
+        ...(initialData ? {
+            libcnc: initialData.libcnc || '', etablissement_id: String(initialData.etablissement_id || ''), niveau_id: String(initialData.niveau_id || ''),
+            sescnc: initialData.sescnc || new Date().getFullYear().toString(), type_concours: initialData.type_concours || 'autre', description_concours: initialData.description_concours || '',
+            debcnc: dateValue(initialData.debcnc), fincnc: dateValue(initialData.fincnc), agecnc: Number(initialData.agecnc ?? 35), fracnc: Number(initialData.fracnc ?? 0),
+            nombre_places_total: Number(initialData.nombre_places_total ?? 0), duree_formation: initialData.duree_formation || '', diplome_delivre: initialData.diplome_delivre || '',
+            date_publication_resultats: dateValue(initialData.date_publication_resultats), date_debut_cours: dateValue(initialData.date_debut_cours),
+            series_bac_acceptees: parseList(initialData.series_bac_acceptees), documents_requis: parseList(initialData.documents_requis).map((item: any) => ({ nom: item.nom || item.name || '', obligatoire: item.obligatoire !== false && item.required !== false, description: item.description || '' })),
+            criteres_selection: parseList(initialData.criteres_selection), modalites_inscription: parseList(initialData.modalites_inscription), conditions_eligibilite: parseList(initialData.conditions_eligibilite),
+            contact_email: initialData.contact_email || '', contact_telephone: initialData.contact_telephone || '', lieu_examen: initialData.lieu_examen || '', informations_complementaires: initialData.informations_complementaires || '',
+        } : {})
+    }));
 
     const isPremiereAnnee = formData.type_concours === 'premiere_annee';
 
@@ -180,12 +202,14 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
                 conditions_eligibilite: JSON.stringify(formData.conditions_eligibilite),
             };
 
-            const response = await apiService.makeRequest('/concours', 'POST', payload);
-            if (!response.success) throw new Error(response.message || 'Création du concours impossible');
+            const isEdit = mode === 'edit';
+            if (isEdit && !concoursId) throw new Error('Identifiant du concours manquant');
+            const response = await apiService.makeRequest(isEdit ? `/concours/${concoursId}` : '/concours', isEdit ? 'PUT' : 'POST', payload);
+            if (!response.success) throw new Error(response.message || (isEdit ? 'Modification du concours impossible' : 'Création du concours impossible'));
             
             toast({
                 title: 'Succès',
-                description: 'Le concours a été créé avec succès',
+                description: isEdit ? 'Le concours a été modifié avec succès' : 'Le concours a été créé avec succès',
             });
             
             onSuccess();
@@ -320,7 +344,7 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
                     </Button>
                 ) : (
                     <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? 'Création...' : 'Créer le concours'}
+                        {isSubmitting ? (mode === 'edit' ? 'Enregistrement...' : 'Création...') : (mode === 'edit' ? 'Enregistrer les modifications' : 'Créer le concours')}
                         <Check className="h-4 w-4 ml-2" />
                     </Button>
                 )}
