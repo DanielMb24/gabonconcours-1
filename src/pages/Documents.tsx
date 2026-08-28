@@ -8,7 +8,7 @@ import {Upload, FileText, X, CheckCircle, AlertCircle, ArrowLeft, PlusCircle} fr
 import Layout from '@/components/Layout';
 import {apiService} from '@/services/api';
 import {toast} from '@/hooks/use-toast';
-import {DocumentOption, Concours} from '@/types/entities';
+import {DocumentOption} from '@/types/entities';
 import {useCandidature} from '@/hooks/useCandidature';
 import {Input} from '@/components/ui/input';
 
@@ -16,6 +16,24 @@ import {Input} from '@/components/ui/input';
 interface UploadedDoc extends DocumentOption {
     file: File;
     isCustom?: boolean;
+    requirementId?: string;
+}
+
+interface RequirementDocumentOption extends DocumentOption {
+    requirementId: string;
+}
+
+interface RequirementItem {
+    id: string;
+    nom: string;
+    description?: string;
+    obligatoire: boolean;
+    acceptedMimeTypes?: string[];
+    maxSizeBytes?: number;
+}
+
+interface DocumentChecklistResponse {
+    checklist: Array<{requirement: RequirementItem; document: unknown | null}>;
 }
 
 const Documents = () => {
@@ -47,53 +65,28 @@ const Documents = () => {
     }, [numeroCandidature, candidatureData, loadCandidature, navigate]);
 
     const concoursId = candidatureData?.concours?.id?.toString();
+    const concours = candidatureData?.concours;
 
-    // Récupérer le concours avec ses documents requis
-    const { data: concoursData } = useQuery<Concours | null>({
-        queryKey: ['concours', concoursId],
-        queryFn: async () => {
-            if (!concoursId) return null;
-            const response = await apiService.getConcoursById<Concours>(concoursId);
-            return response.data;
-        },
-        enabled: !!concoursId
+    // Cette route calcule les pièces à partir du concours ET de la filière de
+    // la candidature. Elle constitue l'unique source de vérité du formulaire.
+    const {data: checklistResponse, isLoading: checklistLoading, isError: checklistError} = useQuery({
+        queryKey: ['document-checklist', numeroCandidature],
+        queryFn: () => apiService.get<DocumentChecklistResponse>(`/candidats/nupcan/${encodeURIComponent(numeroCandidature!)}/document-checklist`),
+        enabled: !!numeroCandidature,
     });
 
-    const concours = concoursData;
-    
-    // Parse documents_requis (peut être string JSON ou array)
-    const documentsRequis = useMemo(() => {
-        if (!concours?.documents_requis) return [];
-        
-        if (typeof concours.documents_requis === 'string') {
-            try {
-                return JSON.parse(concours.documents_requis);
-            } catch (e) {
-                console.error('Error parsing documents_requis:', e);
-                return [];
-            }
-        }
-        
-        return concours.documents_requis;
-    }, [concours]);
+    const documentsRequis = useMemo(() =>
+        checklistResponse?.data?.checklist?.map(item => item.requirement) || [],
+    [checklistResponse]);
 
     // Créer les options de documents à partir des données du concours
-    const documentOptions: DocumentOption[] = useMemo(() => {
-        if (!documentsRequis || documentsRequis.length === 0) {
-            // Fallback vers les documents par défaut si aucun n'est défini
-            return [
-                {value: 'cni', label: 'Carte Nationale d\'Identité', required: true, description: ''},
-                {value: 'diplome', label: 'Diplôme ou Attestation', required: true, description: ''},
-                {value: 'certificat_medical', label: 'certificat médical', required: true, description: ''},
-                {value: 'acte_naissance', label: 'Acte de naissance', required: true, description: ''},
-            ];
-        }
-        
-        return documentsRequis.map((doc: { nom: string; obligatoire: boolean; description?: string }) => ({
-            value: (doc.nom || '').toLowerCase().replace(/['\s]+/g, '_'),
+    const documentOptions: RequirementDocumentOption[] = useMemo(() => {
+        return documentsRequis.map((doc: RequirementItem) => ({
+            value: doc.id,
             label: doc.nom,
             required: doc.obligatoire,
-            description: doc.description || ''
+            description: doc.description || '',
+            requirementId: doc.id,
         }));
     }, [documentsRequis]);
 
@@ -128,28 +121,22 @@ const Documents = () => {
             if (!nupcan) throw new Error('NUPCAN est requis pour l\'upload des documents');
             if (!concoursId) throw new Error('ID du concours manquant');
 
-            const formData = new FormData();
-            formData.append('concours_id', concoursId);
-            formData.append('nupcan', nupcan);
-
-            // Filtrer et envoyer uniquement les documents avec fichiers
-            let fileCount = 0;
-            filesMap.forEach((doc, key) => {
-                // Vérifier que le document a bien un fichier avant de l'ajouter
-                if (doc.file && doc.file instanceof File) {
-                    formData.append('documents', doc.file);
-                    fileCount++;
-                    console.log('📎 Ajout fichier:', doc.file.name, 'pour', doc.label);
-                }
-            });
-
-            console.log('📤 Envoi de', fileCount, 'fichier(s) au serveur');
-
-            if (fileCount === 0) {
+            const documents = Array.from(filesMap.values()).filter(doc => doc.file instanceof File);
+            if (documents.length === 0) {
                 throw new Error('Aucun fichier valide à envoyer');
             }
-
-            return apiService.createDossier(formData);
+            const responses = [];
+            for (const doc of documents) {
+                const formData = new FormData();
+                formData.append('nupcan', nupcan);
+                formData.append('file', doc.file);
+                formData.append('nomdoc', doc.label);
+                if (doc.requirementId) formData.append('requirement_id', doc.requirementId);
+                const response = await apiService.makeFormDataRequest('/documents', 'POST', formData);
+                if (!response.success) throw new Error(response.message || `Échec de l'envoi : ${doc.label}`);
+                responses.push(response.data);
+            }
+            return responses;
         },
         onSuccess: (response) => {
             setUploadSuccess(true);
@@ -440,14 +427,14 @@ const Documents = () => {
                 />
 
                 {/* En-tête ultra-compact */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                <div className="mb-5 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                         <Button variant="ghost" onClick={() => navigate(-1)} size="sm" className="h-8">
                             <ArrowLeft className="h-4 w-4 mr-1"/>
                             Retour
                         </Button>
                         <div>
-                            <h1 className="text-xl font-bold">Dépôt des Documents</h1>
+                            <h1 className="text-lg font-bold sm:text-xl">Dépôt des documents</h1>
                             {concours?.libcnc && (
                                 <p className="text-xs text-muted-foreground">{concours.libcnc}</p>
                             )}
@@ -455,7 +442,7 @@ const Documents = () => {
                     </div>
                     
                     {/* Progression inline */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
                         <div className="text-right">
                             <div className="text-lg font-bold text-primary">
                                 {uploadedRequiredCount}/{requiredDocs.length}
@@ -468,7 +455,7 @@ const Documents = () => {
 
                 {/* Messages de statut - Design moderne avec animation */}
                 {(uploadMutation.isPending || uploadSuccess || uploadMutation.isError) && (
-                    <div className={`mb-3 p-4 rounded-xl flex items-start gap-3 shadow-lg border-2 animate-in slide-in-from-top-2 duration-300 ${
+                    <div className={`mb-4 flex items-start gap-3 border p-4 ${
                         uploadSuccess 
                             ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-800' 
                             : uploadMutation.isPending 
@@ -504,6 +491,10 @@ const Documents = () => {
                         </div>
                     </div>
                 )}
+
+                {checklistLoading && <div className="mb-4 border bg-muted/30 p-5 text-sm text-muted-foreground">Chargement des pièces demandées pour ce concours…</div>}
+                {checklistError && <div className="mb-4 border border-red-300 bg-red-50 p-5 text-sm text-red-700">Impossible de charger la liste officielle des documents. Réessayez avant de poursuivre.</div>}
+                {!checklistLoading && !checklistError && documentOptions.length === 0 && <div className="mb-4 border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">Aucune pièce n’a été configurée pour ce concours et cette filière. Aucun document générique ne vous sera demandé.</div>}
 
                 {/* Layout en 2 colonnes: Documents à gauche (70%), Consignes à droite (30%) */}
                 <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
@@ -663,9 +654,9 @@ const Documents = () => {
                             <CardContent className="px-4 pb-3 space-y-2">
                                 {customDocsList.map((doc) => (
                                     <div key={doc.value}
-                                         className="grid grid-cols-12 gap-2 items-center p-2 border rounded-md bg-gray-50">
+                                         className="grid grid-cols-1 gap-2 border bg-gray-50 p-3 sm:grid-cols-12 sm:items-center">
                                         {/* Champ Titre */}
-                                        <div className="col-span-5">
+                                        <div className="sm:col-span-5">
                                             <Input
                                                 placeholder="Nom du document"
                                                 value={doc.label}
@@ -676,7 +667,7 @@ const Documents = () => {
                                         </div>
 
                                         {/* Champ Fichier / État */}
-                                        <div className="col-span-6">
+                                        <div className="min-w-0 sm:col-span-6">
                                             {doc.file ? (
                                                 <span className="text-[10px] text-green-700 flex items-center gap-1 font-medium truncate">
                                                     <CheckCircle className="h-2.5 w-2.5 flex-shrink-0"/> {doc.file.name}
@@ -694,7 +685,7 @@ const Documents = () => {
                                         </div>
 
                                         {/* Bouton Suppression */}
-                                        <div className="col-span-1 flex justify-end">
+                                        <div className="flex justify-end sm:col-span-1">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -719,14 +710,14 @@ const Documents = () => {
                         </Card>
 
                         {/* Boutons d'Action Principaux */}
-                        <div className="flex justify-between pt-2">
-                            <Button variant="outline" onClick={() => navigate(-1)} disabled={uploadMutation.isPending} size="sm" className="h-8">
+                        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
+                            <Button variant="outline" onClick={() => navigate(-1)} disabled={uploadMutation.isPending} size="sm" className="h-10 w-full sm:h-8 sm:w-auto">
                                 <ArrowLeft className="h-3 w-3 mr-1"/> Retour
                             </Button>
                             <Button
                                 onClick={handleContinuer}
-                                className="bg-primary hover:bg-primary/90 shadow-lg h-8 text-xs"
-                                disabled={uploadMutation.isPending || completionPercentage < 100 || uploadSuccess}
+                                className="h-10 w-full bg-primary text-xs hover:bg-primary/90 sm:h-8 sm:w-auto"
+                                disabled={checklistLoading || checklistError || uploadMutation.isPending || completionPercentage < 100 || uploadSuccess}
                             >
                                 {uploadMutation.isPending
                                     ? 'Enregistrement...'

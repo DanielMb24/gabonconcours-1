@@ -195,6 +195,19 @@
 [data-radix-scroll-area-viewport], .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 table { min-width: 640px; }
 
+/* Garde-fous responsives partagés par les écrans publics et administrateur. */
+.grid > *, .flex > * { min-width: 0; }
+[role="dialog"] { max-width: calc(100vw - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; }
+[role="tablist"] { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+button { overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  .container { width: 100%; padding-left: 1rem; padding-right: 1rem; }
+  [role="dialog"] { width: calc(100vw - 1rem); }
+  [role="tablist"] > * { min-width: max-content; }
+  .card-modern { padding: 1rem; }
+}
+
 /* Compatibilité sombre pour les anciens écrans qui utilisent encore des
    couleurs Tailwind fixes plutôt que les variables du design system. */
 .dark .bg-white { background-color: hsl(var(--card)) !important; }
