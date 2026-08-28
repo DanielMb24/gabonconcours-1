@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Eye, AlertCircle, CheckCircle, XCircle as XCircleIcon, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import DocumentViewer from "@/components/DocumentViewer.tsx";
+import {API_ORIGIN} from '@/services/api';
 
 // LE MÊME BADGE QUE DANS LE TABLEAU → COHÉRENCE TOTALE
 const StatusBadge = ({ status }: { status: string }) => {
@@ -104,7 +105,7 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
 
     if (!document) return null;
 
-    const fileUrl = `http://localhost:3001/uploads/documents/${document.nom_fichier}`;
+    const fileUrl = `${API_ORIGIN}/documents/${document.id}/download`;
     const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(document.nom_fichier || '');
     const isPdf = /\.pdf$/i.test(document.nom_fichier || '');
 

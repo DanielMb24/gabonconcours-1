@@ -54,6 +54,7 @@ const CandidateManagement = () => {
             apiService.validateDocument(documentId.toString(), statut, commentaire),
         onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ['admin-dossiers']});
+            queryClient.invalidateQueries({queryKey: ['candidature', nupcan]});
             toast({
                 title: "Document validé",
                 description: "Le candidat a été automatiquement notifié",
@@ -324,12 +325,20 @@ const showNotes = isFullAdmin || admin_role === 'notes';
                                 <div className="mt-1">
                                     <Badge
                                         className={
-                                            candidat.statut === 'valide' ? 'bg-green-100 text-green-800' :
-                                                candidat.statut === 'rejete' ? 'bg-red-100 text-red-800' :
+                                            ['valide', 'approved'].includes(candidat.statut) ? 'bg-green-100 text-green-800' :
+                                                ['rejete', 'rejected'].includes(candidat.statut) ? 'bg-red-100 text-red-800' :
                                                     'bg-orange-100 text-orange-800'
                                         }
                                     >
-                                        {candidat.statut || 'En attente'}
+                                        {{
+                                            draft: 'Brouillon',
+                                            submitted: 'Soumise',
+                                            under_review: 'En cours de vérification',
+                                            approved: 'Validée',
+                                            rejected: 'Rejetée',
+                                            valide: 'Validée',
+                                            rejete: 'Rejetée'
+                                        }[candidat.statut] || 'En attente'}
                                     </Badge>
                                 </div>
                             </div>

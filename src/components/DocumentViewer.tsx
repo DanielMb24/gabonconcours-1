@@ -2,6 +2,7 @@ import React, {useState, useEffect} from 'react';
 import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '@/components/ui/dialog';
 import {Button} from '@/components/ui/button';
 import {X, Download, AlertTriangle, FileText} from 'lucide-react';
+import {API_ORIGIN, BACKEND_ORIGIN} from '@/services/api';
 
 interface Document {
     id?: string;
@@ -46,8 +47,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({isOpen, onClose, documen
     const documentName = getDocumentName();
 
     let documentUrl: string | null = null;
-    if (documentPath) {
-        documentUrl = `http://localhost:3001/${documentPath.replace(/\\/g, '/')}`;
+    if (document?.id) {
+        documentUrl = `${API_ORIGIN}/documents/${document.id}/download`;
+    } else if (documentPath) {
+        const normalizedPath = documentPath.replace(/\\/g, '/');
+        if (/^(data:|blob:|https?:\/\/)/i.test(normalizedPath)) {
+            documentUrl = normalizedPath;
+        } else {
+            documentUrl = `${BACKEND_ORIGIN}/${normalizedPath.replace(/^\/+/, '')}`;
+        }
     }
 
     useEffect(() => {
