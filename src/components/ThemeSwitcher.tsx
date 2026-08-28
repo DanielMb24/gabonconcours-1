@@ -21,6 +21,12 @@ export const ThemeSwitcher: React.FC = () => {
     } else {
       applyTheme('system');
     }
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncSystemTheme = () => {
+      if ((localStorage.getItem('theme') || 'system') === 'system') applyTheme('system');
+    };
+    media.addEventListener('change', syncSystemTheme);
+    return () => media.removeEventListener('change', syncSystemTheme);
   }, []);
 
   const applyTheme = (newTheme: Theme) => {
