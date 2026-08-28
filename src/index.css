@@ -184,3 +184,23 @@
            rounded-full text-sm font-semibold
            border border-blue-500/20;
 }
+/* Une esthétique plus institutionnelle sur l'accueil: angles sobres pour les
+   cartes et appels à l'action, tout en conservant les pastilles et avatars. */
+.institutional-home .rounded-3xl,
+.institutional-home .rounded-2xl,
+.institutional-home .rounded-xl,
+.institutional-home .rounded-lg {
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .institutional-home section {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .institutional-home h1 {
+    font-size: clamp(2.25rem, 11vw, 3.25rem);
+    line-height: 1.05;
+  }
+}

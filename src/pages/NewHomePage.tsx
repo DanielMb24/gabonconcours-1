@@ -168,6 +168,7 @@ const NewHomePage = () => {
 
   return (
     <Layout>
+      <div className="institutional-home">
       {/* HERO SECTION */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/10 py-24 md:py-36">
         <div className="absolute inset-0 bg-grid-primary/5 bg-[size:60px_60px] animate-pulse" />
@@ -664,6 +665,7 @@ const NewHomePage = () => {
           animation: gradient 6s ease infinite;
         }
       `}</style>
+      </div>
     </Layout>
   );
 };

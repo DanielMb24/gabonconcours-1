@@ -34,8 +34,8 @@ class CandidatureStateManager {
     private states: Map<string, CandidatureState> = new Map();
 
     validateNupcanFormat(nupcan: string): boolean {
-        // Valider le format NUPCAN (ex: 2025630-15)
-        const nupcanRegex = /^\d{8}-\d{1,4}$/;
+        // Format actuel (GC-2026-0000001) et ancien format conservé pour migration.
+        const nupcanRegex = /^(?:GC-\d{4}-\d{7}|\d{8}-\d{1,4})$/i;
         return nupcanRegex.test(nupcan);
     }
 

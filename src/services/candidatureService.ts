@@ -75,14 +75,16 @@ class CandidatureService {
                 body: formData,
             });
 
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
-            }
-
             const candidatResponse = await response.json();
+            if (!response.ok || !candidatResponse.success) {
+                if (response.status === 409 || candidatResponse?.error?.code === 'APPLICATION_ALREADY_EXISTS') {
+                    throw new Error('Vous êtes déjà inscrit à ce concours. Retrouvez cette candidature dans votre dashboard.');
+                }
+                throw new Error(candidatResponse.message || `Impossible de créer la candidature (${response.status})`);
+            }
             console.log('✅ Candidat créé:', candidatResponse);
 
-            if (!candidatResponse.success || !candidatResponse.data) {
+            if (!candidatResponse.data) {
                 throw new Error(candidatResponse.message || 'Erreur lors de la création du candidat');
             }
 
