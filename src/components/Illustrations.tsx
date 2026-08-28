@@ -59,7 +59,7 @@ const Illustration: React.FC<IllustrationProps> = ({
                     GABConcours
                 </text>
                 <text x="200" y="65" textAnchor="middle" fill="#6B7280" fontSize="14">
-                    Plateforme Officielle des Concours
+                    Service numérique des concours
                 </text>
             </svg>
         ),

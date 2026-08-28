@@ -54,7 +54,7 @@ export const translations = {
     finish: 'Terminer',
     
     // Hero Section
-    heroTitle: 'Plateforme Officielle',
+    heroTitle: 'Concours au Gabon',
     heroMainTitle: 'GABConcours',
     heroSubtitle: 'Votre portail unique pour tous les concours du Gabon',
     heroDescription: 'Inscrivez-vous facilement, suivez votre progression et réussissez vos concours',
@@ -189,7 +189,7 @@ export const translations = {
     finish: 'Finish',
     
     // Hero Section
-    heroTitle: 'Official Platform',
+    heroTitle: 'Competitions in Gabon',
     heroMainTitle: 'GABContests',
     heroSubtitle: 'Your unique portal for all contests in Gabon',
     heroDescription: 'Register easily, track your progress and succeed in your contests',

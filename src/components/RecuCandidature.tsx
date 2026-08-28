@@ -27,7 +27,7 @@ const RecuCandidature: React.FC<RecuCandidatureProps> = ({
             <CardHeader className="text-center border-b">
                 <div className="mb-4">
                     <h1 className="text-2xl font-bold text-primary">REÇU DE CANDIDATURE</h1>
-                    <p className="text-muted-foreground">GabConcours - Plateforme Officielle</p>
+                    <p className="text-muted-foreground">GABConcours - Service de candidature</p>
                 </div>
                 <div className="flex justify-between items-center">
                     <div>
@@ -173,7 +173,7 @@ const RecuCandidature: React.FC<RecuCandidatureProps> = ({
                             Conservez précieusement ce document pour vos démarches administratives.
                         </p>
                         <p className="font-semibold">
-                            GabConcours - Plateforme Officielle des Concours du Gabon
+                            GABConcours - Concours de l'enseignement supérieur au Gabon
                         </p>
                         <p className="text-xs mt-2">
                             Document généré

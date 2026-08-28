@@ -49,7 +49,7 @@ const BeautifulReceiptPDF: React.FC<BeautifulReceiptPDFProps> = ({
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'normal');
-        doc.text('Plateforme Officielle de Candidature', 130, 20);
+        doc.text('Service numérique de candidature', 130, 20);
         doc.text('République Gabonaise', 130, 28);
 
         // Titre du document
@@ -226,7 +226,7 @@ const BeautifulReceiptPDF: React.FC<BeautifulReceiptPDFProps> = ({
         doc.setFont('helvetica', 'normal');
         doc.text('Ce document certifie l\'inscription du candidat au concours mentionné ci-dessus.', 105, pageHeight - 20, {align: 'center'});
         doc.text(`Document généré automatiquement le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 105, pageHeight - 12, {align: 'center'});
-        doc.text('GABConcours - Plateforme officielle de candidature - République Gabonaise', 105, pageHeight - 4, {align: 'center'});
+        doc.text('GABConcours - Service numérique de candidature - République Gabonaise', 105, pageHeight - 4, {align: 'center'});
 
         // Télécharger le PDF
         doc.save(`recu-candidature-${candidat.nupcan}.pdf`);

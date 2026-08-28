@@ -156,7 +156,7 @@ const EnhancedRecuCandidaturePDF: React.FC<EnhancedRecuCandidaturePDFProps> = ({
         yPos += 5;
         doc.text(`Document généré automatiquement le ${new Date().toLocaleDateString('fr-FR')}`, 105, yPos, {align: 'center'});
         yPos += 5;
-        doc.text('GABConcours - Plateforme officielle de candidature', 105, yPos, {align: 'center'});
+        doc.text('GABConcours - Service numérique de candidature', 105, yPos, {align: 'center'});
 
         // Télécharger le PDF
         doc.save(`recu-candidature-${candidat.nupcan}.pdf`);

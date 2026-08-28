@@ -217,7 +217,7 @@ const ModernConnexion = () => {
         >
           <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-sm text-muted-foreground mb-6">
-              Plateforme officielle du Ministère de l'Enseignement Supérieur
+              Service numérique des concours de l'enseignement supérieur
             </p>
             <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
               {/* Add partner logos here */}

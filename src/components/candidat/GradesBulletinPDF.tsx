@@ -71,7 +71,7 @@ const GradesBulletinPDF: React.FC<GradesBulletinPDFProps> = ({
         <div className="text-center mb-8 border-b-2 border-primary pb-4">
           <h1 className="text-3xl font-bold text-primary mb-2">GABConcours</h1>
           <p className="text-lg text-muted-foreground">République Gabonaise</p>
-          <p className="text-sm text-muted-foreground">Plateforme Officielle des Concours</p>
+          <p className="text-sm text-muted-foreground">Service numérique des concours</p>
         </div>
 
         {/* Titre */}
@@ -141,7 +141,7 @@ const GradesBulletinPDF: React.FC<GradesBulletinPDFProps> = ({
         {/* Pied de page */}
         <div className="mt-8 pt-4 border-t text-center text-sm text-muted-foreground">
           <p>Document généré le {new Date().toLocaleDateString('fr-FR')}</p>
-          <p className="mt-2">GABConcours - Plateforme Officielle des Concours du Gabon</p>
+          <p className="mt-2">GABConcours - Concours de l'enseignement supérieur au Gabon</p>
         </div>
       </div>
 
