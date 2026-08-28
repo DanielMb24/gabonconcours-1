@@ -671,8 +671,8 @@ const DashboardNipcan: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-screen">
+        <div className="min-h-screen bg-slate-50 lg:flex overflow-x-hidden">
+            <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col fixed inset-y-0 left-0">
                 <div className="p-6 border-b border-gray-200">
                     <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                         GABConcours
@@ -826,8 +826,41 @@ const DashboardNipcan: React.FC = () => {
                 </div>
             </aside>
 
-            <main className="flex-1 ml-64 overflow-y-auto">
-                <div className="max-w-7xl mx-auto p-8">
+            <main className="min-w-0 flex-1 lg:ml-64">
+                <header className="lg:hidden sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+                    <div className="flex items-center justify-between px-4 py-3">
+                        <div>
+                            <p className="font-bold text-blue-700">GABConcours</p>
+                            <p className="text-xs text-slate-500 truncate max-w-[220px]">
+                                {dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}
+                            </p>
+                        </div>
+                        <button onClick={handleLogout} className="p-2 text-red-600" aria-label="Se déconnecter">
+                            <LogOut className="h-5 w-5" />
+                        </button>
+                    </div>
+                    <nav className="flex gap-1 overflow-x-auto px-3 pb-3 [scrollbar-width:none]" aria-label="Navigation du dashboard">
+                        {[
+                            ['overview', 'Vue d’ensemble', LayoutDashboard],
+                            ['candidatures', 'Candidatures', FileText],
+                            ['documents', 'Documents', FileText],
+                            ['notifications', 'Notifications', Bell],
+                            ['messages', 'Messages', MessageSquare],
+                            ['resultats', 'Résultats', Award],
+                            ['profil', 'Profil', User],
+                        ].map(([tab, label, Icon]: any[]) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                disabled={!selectedCandidature && !['overview', 'candidatures', 'profil'].includes(tab)}
+                                className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border ${activeTab === tab ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-700'} disabled:opacity-40`}
+                            >
+                                <Icon className="h-4 w-4" /> {label}
+                            </button>
+                        ))}
+                    </nav>
+                </header>
+                <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 overflow-hidden">
                     {renderContent()}
                 </div>
             </main>

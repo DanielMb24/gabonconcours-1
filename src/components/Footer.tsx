@@ -27,7 +27,7 @@ const Footer: React.FC = () => {
                             <span className="text-xl font-bold">GABConcours</span>
                         </div>
                         <p className="text-gray-300 text-sm">
-                            Plateforme officielle de gestion des concours d'entrée dans les établissements d'enseignement supérieur au Gabon.
+                            Service numérique de candidature aux concours d'entrée dans les établissements d'enseignement supérieur au Gabon.
                         </p>
                         <div className="flex space-x-3">
                             <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">

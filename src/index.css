@@ -96,7 +96,13 @@
     body {
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
+        min-width: 320px;
+        overflow-x: hidden;
     }
+
+    img, video, canvas, svg { max-width: 100%; }
+    input, select, textarea, button { max-width: 100%; }
+    h1, h2, h3, p, td, th { overflow-wrap: anywhere; }
 
     button:not([role="switch"]) {
         border-radius: 0.25rem !important;
@@ -184,6 +190,10 @@
            rounded-full text-sm font-semibold
            border border-blue-500/20;
 }
+
+/* Les tableaux restent exploitables sur téléphone sans élargir toute la page. */
+[data-radix-scroll-area-viewport], .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+table { min-width: 640px; }
 /* Une esthétique plus institutionnelle sur l'accueil: angles sobres pour les
    cartes et appels à l'action, tout en conservant les pastilles et avatars. */
 .institutional-home .rounded-3xl,
