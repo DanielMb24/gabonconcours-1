@@ -26,7 +26,8 @@ import {apiService} from '@/services/api';
 import {validatePhoneNumber, formatPhoneDisplay} from '@/utils/phoneValidation';
 
 const Paiement = () => {
-    const {numeroCandidature} = useParams<{ numeroCandidature: string }>();
+    const {nupcan} = useParams<{ nupcan: string }>();
+    const numeroCandidature = decodeURIComponent(nupcan || '').trim().toUpperCase();
     const navigate = useNavigate();
     const {candidatureState, setCandidatureState, updateProgression} = useCandidatureState();
 
@@ -133,7 +134,7 @@ const Paiement = () => {
                 });
 
                 await updateProgression(numeroCandidature || '', 'paiement');
-                navigate(`/succes/${encodeURIComponent(numeroCandidature || '')}`);
+                navigate(`/succes-continue/${encodeURIComponent(numeroCandidature || '')}`);
 
             } catch (error: any) {
                 console.error('Erreur validation gratuite:', error);
@@ -211,7 +212,7 @@ const Paiement = () => {
             });
 
             await updateProgression(numeroCandidature || '', 'paiement');
-            navigate(`/succes/${encodeURIComponent(numeroCandidature || '')}`);
+            navigate(`/succes-continue/${encodeURIComponent(numeroCandidature || '')}`);
 
         } catch (error: any) {
             console.error('Erreur paiement:', error);

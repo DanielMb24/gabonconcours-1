@@ -7,6 +7,9 @@ import {apiService} from '@/services/api';
 
 interface ApiResponse<T> { success: boolean; data?: T }
 
+const compactText = (...parts: Array<string | null | undefined>) =>
+  parts.map((value) => String(value || '').trim()).filter(Boolean).join(', ');
+
 const NewHomePage = () => {
   const navigate = useNavigate();
   const {data: concoursResponse, isLoading} = useQuery<ApiResponse<any[]>>({queryKey: ['concours'], queryFn: () => apiService.getConcours<any[]>()});
@@ -14,6 +17,9 @@ const NewHomePage = () => {
   const concours = (concoursResponse?.data || []).filter((item: any) => item.stacnc === '1').slice(0, 3);
   const etablissementItems = etablissementsResponse?.data || [];
   const etablissements = etablissementItems.length;
+  const establishmentMap = new Map(
+    etablissementItems.map((item: any) => [String(item.id || item._id), item]),
+  );
 
   return (
     <Layout>
@@ -53,6 +59,25 @@ const NewHomePage = () => {
             <div className="space-y-4">
               {concours.map((item: any) => (
                 <article key={item.id} className="grid overflow-hidden border border-slate-200 bg-white md:grid-cols-[1.15fr_.85fr]">
+                  {(() => {
+                    const establishment = establishmentMap.get(String(item.etablissement_object_id || item.etablissement_id || ''));
+                    const locationText = compactText(
+                      establishment?.adretes || establishment?.address,
+                      establishment?.province,
+                      item.lieu_examen,
+                    ) || 'Gabon';
+                    const mapsQuery = encodeURIComponent(
+                      compactText(
+                        item.etablissement_nomets || item.etablissement_nom,
+                        establishment?.adretes || establishment?.address,
+                        establishment?.province,
+                        item.lieu_examen,
+                        'Gabon',
+                      ) || 'Gabon',
+                    );
+
+                    return (
+                      <>
                   <div className="min-w-0 p-6 sm:p-8">
                     <div className="flex items-start justify-between gap-3"><BookOpen className="h-6 w-6 text-blue-700" /><span className="bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Ouvert</span></div>
                     <h3 className="mt-8 break-words text-xl font-bold leading-snug sm:text-2xl">{item.libcnc}</h3>
@@ -65,9 +90,23 @@ const NewHomePage = () => {
                     <p className="mt-1 text-lg font-bold">{item.etablissement_nomets || item.etablissement_nom || 'Établissement organisateur'}</p>
                     <div className="mt-5 flex items-start gap-3 border-t border-slate-200 pt-5 text-sm text-slate-600">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-                      <span>{item.lieu_examen || item.etablissement_adresse || item.adresse || 'Gabon'}</span>
+                      <div className="min-w-0">
+                        <p className="break-words">{locationText}</p>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-blue-700"
+                        >
+                          Ouvrir le GPS Google
+                          <ArrowRight className="h-4 w-4" />
+                        </a>
+                      </div>
                     </div>
                   </div>
+                      </>
+                    );
+                  })()}
                 </article>
               ))}
             </div>
