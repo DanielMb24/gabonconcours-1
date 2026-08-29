@@ -63,6 +63,9 @@ const GestionAdmins = () => {
 
             });
             setIsCreateDialogOpen(false);
+            if (!response.data?.delivery?.emailSent && response.data?.delivery?.temporaryPassword) {
+                setCredentialResult({email:response.data.email,password:response.data.delivery.temporaryPassword,title:'Administrateur créé — transmission manuelle requise'});
+            }
             toast({
                 title: response.data?.delivery?.emailSent ? "Admin créé" : "Admin créé, email non envoyé",
                 description: response.data?.delivery?.emailSent
@@ -150,8 +153,9 @@ const GestionAdmins = () => {
                 nom: formData.get('nom') as string,
                 prenom: formData.get('prenom') as string,
                 email: formData.get('email') as string,
+                role: formData.get('role') as string || 'admin',
                 etablissement_id: formData.get('etablissement_id') ?
-                    parseInt(formData.get('etablissement_id') as string) : undefined,
+                    String(formData.get('etablissement_id')) : undefined,
             };
 
             console.log('Création admin avec données:', adminData);
@@ -176,7 +180,7 @@ const GestionAdmins = () => {
                 email: formData.get('email') as string,
                 statut: formData.get('statut') as string,
                 etablissement_id: formData.get('etablissement_id') ?
-                    parseInt(formData.get('etablissement_id') as string) : null,
+                    String(formData.get('etablissement_id')) : null,
             }
         });
     };
@@ -199,7 +203,12 @@ const GestionAdmins = () => {
             case 'super_admin':
                 return <Badge className="bg-purple-100 text-purple-800">Super Admin</Badge>;
             case 'admin_etablissement':
+            case 'admin':
                 return <Badge className="bg-blue-100 text-blue-800">Admin Établissement</Badge>;
+            case 'reviewer':
+                return <Badge className="bg-amber-100 text-amber-800">Validation</Badge>;
+            case 'finance':
+                return <Badge className="bg-emerald-100 text-emerald-800">Paiements</Badge>;
             default:
                 return <Badge variant="secondary">{role}</Badge>;
         }
@@ -247,6 +256,17 @@ const GestionAdmins = () => {
                                 <Input id="email" name="email" type="email" required/>
                             </div>
                             <div>
+                                <Label htmlFor="role">Rôle</Label>
+                                <Select name="role" defaultValue="admin">
+                                    <SelectTrigger id="role"><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="admin">Administrateur établissement</SelectItem>
+                                        <SelectItem value="reviewer">Documents et notes</SelectItem>
+                                        <SelectItem value="finance">Paiements</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
                                 <Label htmlFor="etablissement_id">Établissement</Label>
                                 <Select name="etablissement_id">
                                     <SelectTrigger>
@@ -282,7 +302,7 @@ const GestionAdmins = () => {
                             <Users className="h-8 w-8 text-blue-500"/>
                             <div>
                                 <p className="text-2xl font-bold">
-                                    {admins.filter((a: any) => a.role === 'admin_etablissement').length}
+                                    {admins.filter((a: any) => ['admin','admin_etablissement'].includes(a.role)).length}
                                 </p>
                                 <p className="text-sm text-muted-foreground">Admins Établissement</p>
                             </div>

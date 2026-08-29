@@ -12,10 +12,10 @@ import { candidatureService } from "@/services/candidatureService.ts";
 import { useParams } from "react-router-dom";
 
 interface NotesManagerProps {
-    candidatId: number;
+    candidatId: string | number;
     candidatNom: string;
     candidatPrenom: string;
-    concoursId: number;
+    concoursId: string | number;
 }
 
 interface Note {

@@ -175,7 +175,7 @@ const CandidateDocumentManager: React.FC<CandidateDocumentManagerProps> = ({
                   </TableCell>
                   <TableCell>
                     {/* LE VRAI STATUT QUI VIENT DE LA BASE */}
-                    <StatusBadge status={document.document_statut } />
+                    <StatusBadge status={document.document_statut || document.statut} />
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

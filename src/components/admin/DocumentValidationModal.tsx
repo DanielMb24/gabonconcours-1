@@ -8,8 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle2, XCircle, FileText, User, Calendar, Eye, AlertCircle, CheckCircle, XCircle as XCircleIcon, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { API_ORIGIN } from '@/services/api';
 import DocumentViewer from "@/components/DocumentViewer.tsx";
-import {API_ORIGIN} from '@/services/api';
 
 // LE MÊME BADGE QUE DANS LE TABLEAU → COHÉRENCE TOTALE
 const StatusBadge = ({ status }: { status: string }) => {
@@ -112,25 +112,25 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl shadow-2xl">
-                    <DialogHeader className="p-8 pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
-                        <DialogTitle className="flex items-center gap-4 text-3xl font-bold text-gray-800">
-                            <FileText className="h-10 w-10 text-blue-600" />
+                <DialogContent className="w-[min(94vw,52rem)] max-w-3xl max-h-[88vh] overflow-y-auto p-0 rounded-xl shadow-xl">
+                    <DialogHeader className="p-5 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+                        <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-gray-800">
+                            <FileText className="h-7 w-7 text-blue-600" />
                             Validation de document
                         </DialogTitle>
-                        <DialogDescription className="text-lg text-gray-600 mt-2">
+                        <DialogDescription className="text-sm text-gray-600 mt-1">
                             Examinez attentivement le document avant de prendre une décision.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="px-8 pb-8 space-y-8">
+                    <div className="px-5 pb-5 space-y-5">
                         {/* Infos candidat + document */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <Card className="border-2 shadow-lg">
-                                <CardContent className="pt-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Card>
+                                <CardContent className="pt-4 space-y-4">
                                     <div>
                                         <Label className="text-sm font-bold text-gray-600">Document</Label>
-                                        <p className="text-xl font-bold text-gray-800 mt-1">
+                                        <p className="text-base font-bold text-gray-800 mt-1">
                                             {document.nomdoc}
                                         </p>
                                         <p className="text-sm text-muted-foreground">Type: {document.type || 'Non spécifié'}</p>
@@ -150,12 +150,12 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 shadow-lg">
-                                <CardContent className="pt-6 space-y-6">
+                            <Card>
+                                <CardContent className="pt-4 space-y-4">
                                     <div>
                                         <Label className="text-sm font-bold text-gray-600">Date de soumission</Label>
-                                        <p className="flex items-center gap-3 text-lg font-medium mt-2">
-                                            <Calendar className="h-6 w-6 text-blue-600" />
+                                        <p className="flex items-center gap-2 text-sm font-medium mt-2">
+                                            <Calendar className="h-4 w-4 text-blue-600" />
                                             {new Date(document.created_at).toLocaleDateString('fr-FR', {
                                                 weekday: 'long',
                                                 day: 'numeric',
@@ -178,10 +178,9 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                         {/* Aperçu du document */}
                         <div>
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-2xl font-bold text-gray-800">Aperçu du document</h3>
+                                <h3 className="text-lg font-bold text-gray-800">Aperçu du document</h3>
                                 <Button
                                     variant="outline"
-                                    size="lg"
                                     onClick={() => setSelectedDocument(document)}
                                     className="shadow-md hover:shadow-lg transition-shadow"
                                 >
@@ -190,8 +189,8 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                                 </Button>
                             </div>
 
-                            <Card className="overflow-hidden border-2 shadow-xl">
-                                <div className="bg-gradient-to-b from-gray-50 to-gray-100 p-6 min-h-96 flex items-center justify-center">
+                            <Card className="overflow-hidden">
+                                <div className="bg-gray-50 p-3 min-h-56 flex items-center justify-center">
                                     {document.nom_fichier ? (
                                         isImage ? (
                                             <img
@@ -202,7 +201,7 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                                         ) : isPdf ? (
                                             <iframe
                                                 src={`${fileUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                                                className="w-full h-96 rounded-xl border-2 border-gray-300 shadow-inner"
+                                                className="w-full h-64 rounded-md border"
                                                 title="PDF Preview"
                                             />
                                         ) : (
@@ -219,12 +218,12 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                             </Card>
                         </div>
 
-                        <Separator className="my-8" />
+                        <Separator />
 
                         {/* Commentaire */}
                         <div className="space-y-4">
                             <div>
-                                <Label htmlFor="commentaire" className="text-xl font-bold">
+                                <Label htmlFor="commentaire" className="text-base font-bold">
                                     Commentaire {validationType === 'rejete' && <span className="text-rose-600">(obligatoire)</span>}
                                 </Label>
                                 {validationType === 'rejete' && (
@@ -242,19 +241,18 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                                 placeholder={validationType === 'rejete' 
                                     ? "Ex: Document illisible / Date expirée / Signature manquante..."
                                     : "Commentaire optionnel (recommandé pour le rejet)"}
-                                rows={5}
-                                className="text-lg resize-none border-2 focus:border-blue-500 transition-colors"
+                                rows={3}
+                                className="resize-none"
                             />
                         </div>
 
                         {/* Boutons d'action */}
-                        <div className="flex justify-end gap-6 pt-8">
+                        <div className="flex flex-wrap justify-end gap-3 pt-2">
                             <Button
                                 variant="outline"
                                 onClick={onClose}
                                 disabled={isValidating}
-                                size="lg"
-                                className="px-10 text-lg font-semibold"
+                                className="px-5"
                             >
                                 Annuler
                             </Button>
@@ -263,20 +261,18 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
                                 variant="destructive"
                                 onClick={() => handleValidation('rejete')}
                                 disabled={isValidating}
-                                size="lg"
-                                className="px-12 text-lg font-bold shadow-lg hover:shadow-xl"
+                                className="px-5"
                             >
-                                <XCircle className="h-6 w-6 mr-3" />
+                                <XCircle className="h-4 w-4 mr-2" />
                                 {isValidating ? 'Rejet en cours...' : 'Rejeter'}
                             </Button>
 
                             <Button
                                 onClick={() => handleValidation('valide')}
                                 disabled={isValidating}
-                                size="lg"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-12 text-lg font-bold shadow-lg hover:shadow-xl"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-5"
                             >
-                                <CheckCircle2 className="h-6 w-6 mr-3" />
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
                                 {isValidating ? 'Validation...' : 'Valider'}
                             </Button>
                         </div>
