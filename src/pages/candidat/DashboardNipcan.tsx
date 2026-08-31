@@ -92,6 +92,7 @@ const DashboardNipcan: React.FC = () => {
     const [actualNipcan, setActualNipcan] = useState<string>('');
     const [isLoadingNipcan, setIsLoadingNipcan] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
 
     useEffect(() => {
         const convertToNipcan = async () => {
@@ -256,9 +257,9 @@ const DashboardNipcan: React.FC = () => {
         if (activeTab === 'overview') {
             return (
                 <div className="space-y-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Vue d ensemble</h2>
-                        <p className="text-gray-600 mt-1">Bienvenue {dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}</p>
+                    <div className="rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-700 p-5 text-white shadow-sm sm:p-6">
+                        <h2 className="text-2xl font-bold">Vue d’ensemble</h2>
+                        <p className="mt-1 text-blue-100">Bienvenue {dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -410,7 +411,7 @@ const DashboardNipcan: React.FC = () => {
             if (dashboardData.candidatures.length === 0) {
                 return (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <h2 className="text-2xl font-bold text-gray-900">Gestion des candidatures</h2>
                         </div>
 
@@ -446,7 +447,7 @@ const DashboardNipcan: React.FC = () => {
             
             return (
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-2xl font-bold text-gray-900">Gestion des candidatures</h2>
                         <Button onClick={handleNouvelleCandidature} className="gap-2">
                             <Plus className="h-4 w-4" />
@@ -608,7 +609,7 @@ const DashboardNipcan: React.FC = () => {
         if (activeTab === 'documents' && selectedCandidature) {
             return (
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-2xl font-bold text-gray-900">Mes documents</h2>
                         <Badge variant="outline">NUPCAN: {selectedCandidature}</Badge>
                     </div>
@@ -620,7 +621,7 @@ const DashboardNipcan: React.FC = () => {
         if (activeTab === 'notifications' && selectedCandidature) {
             return (
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
                         <Badge variant="outline">NUPCAN: {selectedCandidature}</Badge>
                     </div>
@@ -632,7 +633,7 @@ const DashboardNipcan: React.FC = () => {
         if (activeTab === 'messages' && selectedCandidature) {
             return (
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-2xl font-bold text-gray-900">Messagerie</h2>
                         <Badge variant="outline">NUPCAN: {selectedCandidature}</Badge>
                     </div>
@@ -646,7 +647,7 @@ const DashboardNipcan: React.FC = () => {
             
             return (
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-2xl font-bold text-gray-900">Mes résultats</h2>
                         <Badge variant="outline">NUPCAN: {selectedCandidature}</Badge>
                     </div>
@@ -677,7 +678,7 @@ const DashboardNipcan: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {mobileMenuOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={()=>setMobileMenuOpen(false)}/>} 
-            <aside className={`w-72 lg:w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 z-50 h-screen transition-transform lg:translate-x-0 ${mobileMenuOpen?'translate-x-0':'-translate-x-full'}`}>
+            <aside className={`w-72 lg:w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 z-50 h-screen transition-transform duration-300 ${mobileMenuOpen?'translate-x-0':'-translate-x-full'} ${desktopMenuOpen?'lg:translate-x-0':'lg:-translate-x-full'}`}>
                 <div className="p-6 border-b border-gray-200">
                     <div className="flex items-start justify-between"><div><h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                         GABConcours
@@ -832,14 +833,14 @@ const DashboardNipcan: React.FC = () => {
                 </div>
             </aside>
 
-            <main className="min-w-0 flex-1 lg:ml-64 overflow-y-auto">
+            <main className={`min-w-0 flex-1 overflow-y-auto transition-[margin] duration-300 ${desktopMenuOpen?'lg:ml-64':'lg:ml-0'}`}>
                 <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-                    <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3"><Button variant="outline" size="icon" className="shrink-0 lg:hidden" onClick={()=>setMobileMenuOpen(true)} aria-label="Ouvrir le menu"><Menu className="h-5 w-5"/></Button><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}</p><p className="hidden truncate text-xs text-slate-500 sm:block">{dashboardData.candidat.nipcan}</p></div></div>
+                    <div className="flex w-full items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3"><Button variant="outline" size="icon" className="shrink-0" onClick={()=>{if(window.innerWidth>=1024)setDesktopMenuOpen(value=>!value);else setMobileMenuOpen(true);}} aria-label={desktopMenuOpen?'Replier le menu':'Ouvrir le menu'}><Menu className="h-5 w-5"/></Button><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}</p><p className="hidden truncate text-xs text-slate-500 sm:block">{dashboardData.candidat.nipcan}</p></div></div>
                         <div className="flex items-center gap-1 sm:gap-2"><Button variant="ghost" size="icon" onClick={()=>setActiveTab('notifications')} disabled={!selectedCandidature} aria-label="Notifications"><Bell className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('profil')} aria-label="Profil"><User className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('settings')} aria-label="Paramètres"><Settings className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Déconnexion" className="text-red-600 hover:bg-red-50 hover:text-red-700"><LogOut className="h-5 w-5"/></Button></div>
                     </div>
                 </header>
-                <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+                <div className="w-full p-4 sm:p-5 lg:p-6">
                     {renderContent()}
                 </div>
             </main>

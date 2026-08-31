@@ -12,7 +12,6 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
-import {id} from "date-fns/locale";
 
 interface Notification {
     id: number;
@@ -57,12 +56,11 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
             }
             return apiService.deleteNotification(String(id));
         },
-        onSuccess: () => {
+        onSuccess: (_data, deletedId) => {
             queryClient.invalidateQueries({queryKey: ['notifications', nupcan]});
             setSelectedIds((prev) => {
                 const newSet = new Set(prev);
-                // @ts-ignore
-                newSet.delete(id);
+                newSet.delete(deletedId);
                 return newSet;
             });
         },
@@ -75,9 +73,6 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
             setSelectedIds(new Set());
         },
     });
-
-    console.log('Données reçues:', notificationsData);
-    if (error) console.error('Erreur API:', error);
 
     const notifications = notificationsData && notificationsData.success && Array.isArray(notificationsData.data)
         ? notificationsData.data
@@ -162,9 +157,9 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
     }
 
     return (
-        <Card>
+        <Card className="border-0 shadow-sm ring-1 ring-slate-200">
             <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center">
                         <Bell className="h-5 w-5 mr-2"/>
                         Notifications
@@ -177,7 +172,7 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="mb-4 flex space-x-4">
+                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <select
                         value={filterStatus}
                         onChange={(e) => handleFilterChange(e.target.value)}
@@ -211,15 +206,15 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
                             {paginatedNotifications.map((notification) => (
                                 <div
                                     key={notification.id}
-                                    className={`p-4 border rounded-lg cursor-pointer ${
+                                    className={`cursor-pointer rounded-xl border p-4 transition-colors ${
                                         notification.statut === 'non_lu'
                                             ? 'bg-blue-50 border-blue-200'
                                             : 'bg-gray-50'
                                     }`}
                                     onClick={() => openModal(notification)}
                                 >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-start space-x-3 flex-1">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="flex min-w-0 flex-1 items-start space-x-3">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.has(notification.id)}
@@ -244,7 +239,7 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex space-x-2">
+                                        <div className="flex justify-end space-x-2">
                                             {notification.statut === 'non_lu' && (
                                                 <Button
                                                     size="sm"
@@ -274,7 +269,7 @@ const NotificationPanel = ({nupcan}: { nupcan: string }) => {
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-4 flex justify-between items-center">
+                        <div className="mt-5 flex flex-col items-center justify-between gap-3 border-t pt-4 sm:flex-row">
                             <Button
                                 variant="outline"
                                 size="sm"
