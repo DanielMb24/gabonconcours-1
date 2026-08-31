@@ -13,6 +13,7 @@ interface Admin {
     role: 'super_admin' | 'admin' | 'reviewer' | 'finance' | 'admin_etablissement'| 'sub_admin';
     etablissement_id?: number;
     etablissement_nom?: string;
+    mustChangePassword?: boolean;
 }
 
 interface AdminAuthContextType {

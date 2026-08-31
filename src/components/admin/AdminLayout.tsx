@@ -1,4 +1,4 @@
-import React, {memo} from 'react';
+import React, {memo, useState} from 'react';
 import {Outlet, Link, useLocation} from 'react-router-dom';
 import {Button} from '@/components/ui/button';
 import {
@@ -14,7 +14,10 @@ import {
     LogOut,
     UserCog,
     GraduationCap,
-    BookOpen
+    BookOpen,
+    Menu,
+    X
+    ,Archive
 } from 'lucide-react';
 import {useAdminAuth} from '@/contexts/AdminAuthContext';
 
@@ -25,6 +28,7 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
     const location = useLocation();
     const {admin, logout} = useAdminAuth();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // Menu items selon le rôle
     const getMenuItems = () => {
@@ -47,7 +51,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
         }
 
         // Les réviseurs travaillent sur les candidatures de leur établissement.
-        if (admin?.role === 'admin_etablissement' || admin?.role === 'reviewer') {
+        if (admin?.role === 'admin' || admin?.role === 'admin_etablissement' || admin?.role === 'reviewer') {
             return [
                 ...baseItems,
                 { path: '/admin/concours', label: 'Concours', icon: Trophy },
@@ -57,6 +61,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                 { path: '/admin/messagerie', label: 'Messages', icon: Settings },
                 { path: '/admin/statistiques', label: 'Statistiques', icon: BarChart3 },
                 { path: '/admin/notes', label: 'Notes', icon: GraduationCap },
+                { path: '/admin/archives', label: 'Archives', icon: Archive },
                 { path: '/admin/profile', label: 'Profil', icon: Settings }
             ];
         }
@@ -68,6 +73,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
             if (role === 'applications_manager') items.push({ path: '/admin/candidats', label: 'Candidatures', icon: Users });
             if (['applications_manager', 'documents_validator', 'documents_viewer'].includes(role)) items.push({ path: '/admin/dossiers', label: 'Documents', icon: FileText });
             if (role === 'grades_entry' || role === 'grades_validator') items.push({ path: '/admin/notes', label: 'Notes', icon: GraduationCap });
+            if (role === 'reports_viewer') items.push({ path: '/admin/archives', label: 'Archives', icon: Archive });
             if (role === 'payments_viewer') items.push({ path: '/admin/paiements', label: 'Paiements', icon: DollarSign });
             if (role === 'reports_viewer') items.push({ path: '/admin/statistiques', label: 'Statistiques', icon: BarChart3 });
             if (role === 'messaging_agent') items.push({ path: '/admin/messagerie', label: 'Messages', icon: Settings });
@@ -92,9 +98,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
     return (
         <div className="min-h-screen bg-background flex">
             {/* Sidebar */}
-            <div className="w-64 bg-card border-r border-border flex flex-col">
+            {mobileMenuOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setMobileMenuOpen(false)}/>} 
+            <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-card border-r border-border flex flex-col transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-64 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="p-6">
-                    <h2 className="text-xl font-bold text-foreground">GabConcours Admin</h2>
+                    <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-foreground">GabConcours Admin</h2><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(false)}><X className="h-5 w-5"/></Button></div>
                     <p className="text-sm text-muted-foreground mt-1">Panel d'administration</p>
                 </div>
 
@@ -108,6 +115,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                                     ? 'bg-primary text-primary-foreground'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                             }`}
+                            onClick={() => setMobileMenuOpen(false)}
                         >
                             <item.icon className="h-5 w-5"/>
                             <span>{item.label}</span>
@@ -142,19 +150,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                         </Link>
                     </Button>
                 </div>
-            </div>
+            </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-                <header className="bg-card border-b border-border px-6 py-4">
+            <div className="min-w-0 flex-1 flex flex-col">
+                <header className="sticky top-0 z-20 bg-card/95 backdrop-blur border-b border-border px-4 sm:px-6 py-3">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex items-center gap-3">
+                            <Button variant="outline" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)} aria-label="Ouvrir le menu"><Menu className="h-5 w-5"/></Button>
+                            <div>
                             <h1 className="text-lg font-semibold text-foreground">Administration</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Gestion de la plateforme GabConcours
+                            <p className="hidden sm:block text-sm text-muted-foreground">
+                                {admin?.etablissement_nom || 'Gestion de la plateforme GabConcours'}
                             </p>
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-4">
+                        <div className="hidden md:flex items-center space-x-4">
               <span className="text-sm text-muted-foreground">
                 Connecté en tant que <strong>{admin?.role === 'reviewer' ? 'réviseur / validation' : admin?.role}</strong>
               </span>
@@ -162,7 +173,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-6">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
                     {children || <Outlet/>}
                 </main>
             </div>

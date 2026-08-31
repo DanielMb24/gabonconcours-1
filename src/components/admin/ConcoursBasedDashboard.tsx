@@ -279,27 +279,33 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {Button} from '@/components/ui/button';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft, Pencil, LockKeyhole} from 'lucide-react';
 import CandidatesList from './CandidatesList';
 import AdminNavigation from "@/components/admin/AdminNavigation.tsx";
+import CreateConcoursMultiStep from '@/components/admin/CreateConcoursMultiStep';
+import {Dialog, DialogContent} from '@/components/ui/dialog';
+import {Badge} from '@/components/ui/badge';
 
 interface ConcoursCardProps {
 
     concours: any;
     onSelect: () => void;
+    onEdit: () => void;
 }
 
-const ConcoursCard: React.FC<ConcoursCardProps> = ({concours, onSelect}) => {
+const ConcoursCard: React.FC<ConcoursCardProps> = ({concours, onSelect, onEdit}) => {
+    const archived = concours.status === 'archived' || (concours.fincnc && new Date(concours.fincnc) < new Date());
     return (
-        <Card className="cursor-pointer hover:shadow-md transition-shadow duration-300" onClick={onSelect}>
+        <Card className="cursor-pointer hover:shadow-md hover:border-primary/40 transition-all duration-300" onClick={onSelect}>
             <CardHeader>
-                <CardTitle>{concours.libcnc}</CardTitle>
+                <div className="flex items-start justify-between gap-3"><CardTitle>{concours.libcnc}</CardTitle><Badge variant={archived ? 'secondary' : 'default'}>{archived ? 'Archivé' : 'Actif'}</Badge></div>
             </CardHeader>
             <CardContent>
                 <p className="text-sm text-muted-foreground">Session: {concours.sescnc}</p>
                 <p className="text-sm text-muted-foreground">
                     Date limite: {new Date(concours.fincnc).toLocaleDateString()}
                 </p>
+                <Button className="mt-4 w-full" variant="outline" size="sm" disabled={archived} onClick={(event) => {event.stopPropagation();onEdit();}}>{archived ? <LockKeyhole className="h-4 w-4 mr-2"/> : <Pencil className="h-4 w-4 mr-2"/>}{archived ? 'Consultation seule' : 'Modifier le concours'}</Button>
             </CardContent>
         </Card>
     );
@@ -308,6 +314,7 @@ const ConcoursCard: React.FC<ConcoursCardProps> = ({concours, onSelect}) => {
 const ConcoursBasedDashboard = () => {
     const {admin, token, isLoading} = useAdminAuth();
     const [selectedConcours, setSelectedConcours] = useState<number | null>(null);
+    const [editingConcours, setEditingConcours] = useState<any | null>(null);
 
     // Définir le token dans apiService
     useEffect(() => {
@@ -326,7 +333,7 @@ const ConcoursBasedDashboard = () => {
     }
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const {data: concours, isLoading: isLoadingConcours} = useQuery({
+    const {data: concours, isLoading: isLoadingConcours, refetch: refetchConcours} = useQuery({
         queryKey: ['adminConcours', admin?.etablissement_id],
         queryFn: () => adminConcoursService.getConcoursByEtablissement(admin?.etablissement_id || 0),
         enabled: !!admin?.etablissement_id && !!token,
@@ -423,6 +430,7 @@ const ConcoursBasedDashboard = () => {
                                 key={c.id}
                                 concours={c}
                                 onSelect={() => setSelectedConcours(c.id)}
+                                onEdit={() => setEditingConcours(c)}
                             />
                         ))
                     ) : (
@@ -431,6 +439,11 @@ const ConcoursBasedDashboard = () => {
                         </div>
                     )}
                 </div>
+                <Dialog open={Boolean(editingConcours)} onOpenChange={(open) => !open && setEditingConcours(null)}>
+                    <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto p-0">
+                        {editingConcours && <CreateConcoursMultiStep mode="edit" concoursId={String(editingConcours.id)} initialData={editingConcours} onClose={() => setEditingConcours(null)} onSuccess={() => {setEditingConcours(null);void refetchConcours();}}/>}
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     }

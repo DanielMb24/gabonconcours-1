@@ -385,8 +385,8 @@ export class ApiService {
     }
 
     // Admin - changement de mot de passe
-    async updateAdminPassword<T>(adminId: number, passwordData: any): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>(`/admin/management/admins/${adminId}/password`, 'PUT', passwordData);
+    async updateAdminPassword<T>(_adminId: number | string, passwordData: any): Promise<ApiResponse<T>> {
+        return this.makeRequest<T>('/admin/auth/password', 'PUT', passwordData);
     }
 }
 

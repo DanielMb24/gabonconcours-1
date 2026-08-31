@@ -21,6 +21,8 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
 import { GraduationCap, Save, Send, Trash2, Download } from 'lucide-react';
+import {useAdminAuth} from '@/contexts/AdminAuthContext';
+import {API_ORIGIN} from '@/services/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +61,7 @@ interface Matiere {
 }
 
 const GradeManagement = () => {
+  const {admin}=useAdminAuth();
   const [concours, setConcours] = useState<any[]>([]);
   const [candidats, setCandidats] = useState<Candidat[]>([]);
   const [matieres, setMatieres] = useState<Matiere[]>([]);
@@ -88,7 +91,7 @@ const GradeManagement = () => {
 
   const loadConcours = async () => {
     try {
-      const response = await apiService.getConcours();
+      const response = admin?.etablissement_id ? await apiService.makeRequest(`/admin/etablissement/${admin.etablissement_id}/concours`,'GET') : await apiService.getConcours();
       if (response.success && response.data) {
         setConcours(response.data as any);
       }
@@ -111,9 +114,9 @@ const GradeManagement = () => {
   const loadCandidatsByConcours = async (concoursId: string) => {
     setIsLoading(true);
     try {
-      const response = await apiService.makeRequest(`/candidats?concours_id=${concoursId}`, 'GET');
+      const response = await apiService.makeRequest(`/admin/concours/${concoursId}/candidats`, 'GET');
       if (response.success && response.data) {
-        setCandidats(response.data as Candidat[]);
+        setCandidats((response.data as any[]).map(item=>({id:item.candidat_id,nupcan:item.nupcan,nomcan:item.nomcan,prncan:item.prncan,maican:item.maican,concours_id:item.concours_id})));
       }
     } catch (error) {
       console.error('Erreur chargement candidats:', error);
@@ -239,17 +242,15 @@ const GradeManagement = () => {
   };
 
   const sendResultsByEmail = async () => {
-    if (!selectedCandidat || !selectedConcours) return;
+    if (!selectedConcours) return;
 
     try {
-      await apiService.makeRequest('/notes/envoyer-resultats', 'POST', {
-        candidat_id: parseInt(selectedCandidat),
-        concours_id: parseInt(selectedConcours),
-      });
+      const response=await apiService.makeRequest(`/admin/contests/${selectedConcours}/publish-results`, 'POST');
+      if(!response.success)throw new Error(response.message);
 
       toast({
         title: 'Succès',
-        description: 'Résultats envoyés par email au candidat',
+        description: 'Résultats publiés et candidats notifiés',
       });
     } catch (error) {
       console.error('Erreur envoi email:', error);
@@ -260,6 +261,7 @@ const GradeManagement = () => {
       });
     }
   };
+  const deleteGrade=async(id:number)=>{if(!window.confirm('Supprimer cette note ?'))return;const response=await apiService.makeRequest(`/admin/grades/${id}`,'DELETE');if(response.success){toast({title:'Note supprimée'});await loadNotes(selectedCandidat,selectedConcours);}else toast({title:'Suppression impossible',description:response.message,variant:'destructive'});};
 
   const selectedCandidatData = candidats.find(c => c.id.toString() === selectedCandidat);
 
@@ -323,6 +325,7 @@ const GradeManagement = () => {
                       <TableHead>Coefficient</TableHead>
                       <TableHead>Note (/20)</TableHead>
                       <TableHead>Note pondérée</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -349,12 +352,13 @@ const GradeManagement = () => {
                           <TableCell>
                             <span className="font-semibold">{notePonderee.toFixed(2)}</span>
                           </TableCell>
+                          <TableCell className="text-right">{note?.id&&<Button variant="ghost" size="icon" onClick={()=>deleteGrade(note.id!)} aria-label="Supprimer la note"><Trash2 className="h-4 w-4 text-destructive"/></Button>}</TableCell>
                         </TableRow>
                       );
                     })}
                     <TableRow className="bg-muted/50 font-bold">
                       <TableCell colSpan={2}>Moyenne générale</TableCell>
-                      <TableCell colSpan={2}>
+                      <TableCell colSpan={3}>
                         <span className="text-primary text-lg">
                           {calculateMoyenne().toFixed(2)} / 20
                         </span>
@@ -378,21 +382,14 @@ const GradeManagement = () => {
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" className="flex items-center space-x-2">
                       <Send className="h-4 w-4" />
-                      <span>Envoyer par email</span>
+                      <span>Publier tous les résultats</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Envoyer les résultats</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Êtes-vous sûr de vouloir envoyer les résultats à{' '}
-                        <strong>
-                          {selectedCandidatData?.nomcan} {selectedCandidatData?.prncan}
-                        </strong>{' '}
-                        ({selectedCandidatData?.maican}) ?
-                        <br />
-                        <br />
-                        Moyenne: <strong>{calculateMoyenne().toFixed(2)} / 20</strong>
+                        Cette action valide les notes du concours, archive les candidatures et notifie automatiquement tous les candidats par email et dans leur espace.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -403,6 +400,8 @@ const GradeManagement = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                <Button variant="outline" onClick={()=>window.open(`${API_ORIGIN}/admin/reports/applications/${selectedCandidatData?.nupcan}/transcript.pdf`,'_blank')}><Download className="h-4 w-4 mr-2"/>Relevé individuel</Button>
+                <Button variant="outline" onClick={()=>window.open(`${API_ORIGIN}/admin/reports/contests/${selectedConcours}/transcripts.pdf`,'_blank')}><Download className="h-4 w-4 mr-2"/>Tous les relevés</Button>
               </div>
             </>
           )}

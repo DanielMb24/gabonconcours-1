@@ -17,6 +17,7 @@ import {
     Send,
     RefreshCw,
     AlertCircle
+    ,CheckCircle, XCircle, Clock3, Pencil, Trash2
 } from 'lucide-react';
 import {toast} from '@/hooks/use-toast';
 import {candidatureService} from '@/services/candidatureService';
@@ -28,6 +29,7 @@ import {useAdminAuth} from '@/contexts/AdminAuthContext';
 import {apiService} from '@/services/api';
 import NotesManager from "@/components/admin/NotesManager.tsx";
 import {id} from "date-fns/locale";
+import {adminCandidatureService} from '@/services/adminCandidatureService';
 
 const CandidateManagement = () => {
     const {nupcan} = useParams();
@@ -36,6 +38,9 @@ const CandidateManagement = () => {
     const queryClient = useQueryClient();
     const {admin} = useAdminAuth(); 
     const {isLoading: actionLoading, executeAction} = useAdminState();
+    const statusMutation=useMutation({mutationFn:({status,reason}:{status:'under_review'|'approved'|'rejected';reason?:string})=>adminCandidatureService.updateStatus(nupcan!,status,reason),onSuccess:(response)=>{if(!response.success)throw new Error(response.message);toast({title:'Statut mis à jour',description:'Le candidat a été notifié.'});void refetch();},onError:(error:Error)=>toast({title:'Modification impossible',description:error.message,variant:'destructive'})});
+    const candidateMutation=useMutation({mutationFn:(data:Record<string,unknown>)=>adminCandidatureService.updateCandidate(nupcan!,data),onSuccess:(response)=>{if(!response.success)throw new Error(response.message);toast({title:'Profil modifié'});void refetch();},onError:(error:Error)=>toast({title:'Modification impossible',description:error.message,variant:'destructive'})});
+    const cancelMutation=useMutation({mutationFn:()=>adminCandidatureService.cancelDraft(nupcan!),onSuccess:(response)=>{if(!response.success)throw new Error(response.message);toast({title:'Brouillon annulé'});navigate('/admin/candidats');},onError:(error:Error)=>toast({title:'Annulation impossible',description:error.message,variant:'destructive'})});
 
     const {data: candidatureData, isLoading, error, refetch} = useQuery({
         queryKey: ['candidature', nupcan],
@@ -183,6 +188,9 @@ const isFullAdmin = ['super_admin', 'admin', 'admin_etablissement'].includes(rol
 const permissions = admin?.permissions || [];
 const showDocuments = isFullAdmin || admin_role === 'documents' || permissions.includes('view_documents');
 const showNotes = isFullAdmin || admin_role === 'notes' || permissions.includes('enter_grades') || permissions.includes('validate_grades');
+const canManageApplication = isFullAdmin || permissions.includes('manage_applications');
+const archived = concours?.status === 'archived' || Boolean(concours?.fincnc && new Date(concours.fincnc) < new Date());
+const editCandidate=()=>{const nomcan=window.prompt('Nom',candidat.nomcan);if(nomcan===null)return;const prncan=window.prompt('Prénom',candidat.prncan);if(prncan===null)return;const maican=window.prompt('Email',candidat.maican||'');if(maican===null)return;const telcan=window.prompt('Téléphone',candidat.telcan||'');if(telcan===null)return;candidateMutation.mutate({nomcan,prncan,maican,telcan});};
 
     return (
         <div className="space-y-6">
@@ -398,6 +406,14 @@ const showNotes = isFullAdmin || admin_role === 'notes' || permissions.includes(
                         <CardTitle>Actions Administratives</CardTitle>
                     </CardHeader>
                     <CardContent>
+                        <div className="mb-4 flex flex-wrap gap-2">
+                            <Button onClick={()=>statusMutation.mutate({status:'under_review'})} disabled={!canManageApplication||archived||statusMutation.isPending} variant="outline"><Clock3 className="mr-2 h-4 w-4"/>Mettre en vérification</Button>
+                            <Button onClick={()=>statusMutation.mutate({status:'approved'})} disabled={!canManageApplication||archived||statusMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="mr-2 h-4 w-4"/>Valider</Button>
+                            <Button onClick={()=>{const reason=window.prompt('Motif du rejet :');if(reason)statusMutation.mutate({status:'rejected',reason});}} disabled={!canManageApplication||archived||statusMutation.isPending} variant="destructive"><XCircle className="mr-2 h-4 w-4"/>Rejeter</Button>
+                            <Button onClick={editCandidate} disabled={!canManageApplication||archived||candidateMutation.isPending} variant="outline"><Pencil className="mr-2 h-4 w-4"/>Modifier le candidat</Button>
+                            {['draft','brouillon'].includes(String(candidat.statut||'').toLowerCase())&&<Button onClick={()=>window.confirm('Annuler ce brouillon ?')&&cancelMutation.mutate()} disabled={!canManageApplication||archived||cancelMutation.isPending} variant="destructive"><Trash2 className="mr-2 h-4 w-4"/>Annuler le brouillon</Button>}
+                            {archived&&<Badge variant="secondary">Concours archivé — lecture seule</Badge>}
+                        </div>
                         <div className="flex flex-wrap gap-2">
                             <Button
                                 onClick={handleDownloadReceipt}

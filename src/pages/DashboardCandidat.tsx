@@ -29,6 +29,11 @@
             Edit,
             ArrowRight,
             ArrowLeft,
+            Bell,
+            Settings,
+            UserCircle,
+            Menu,
+            X,
         } from 'lucide-react';
 
 
@@ -62,23 +67,8 @@
         import CandidatDashboard from "./CandidatDashboard";
     import  {Modal,ModalContent} from "@/components/ui/modal";
 import AddDocumentDialog from '@/components/candidat/AddDocumentDialog.tsx';
+import DocumentStatusBadge from '@/components/documents/DocumentStatusBadge';
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const config: Record<string, { className: string; label: string }> = {
-    valide: { className: 'bg-emerald-100 text-emerald-800 border-emerald-200', label: 'Validé' },
-    rejete: { className: 'bg-rose-100 text-rose-800 border-rose-200', label: 'Rejeté' },
-    en_attente: { className: 'bg-amber-100 text-amber-800 border-amber-200', label: 'En attente' },
-    soumis: { className: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Soumis' },
-  };
-
-  const { className, label } = config[status] || config.en_attente;
-
-  return (
-    <Badge variant="outline" className={className}>
-      {label}
-    </Badge>
-  );
-};
         const DashboardCandidat = () => {
             const { nupcan } = useParams<{ nupcan: string }>();
             const navigate = useNavigate();
@@ -92,6 +82,8 @@ const [showAlert, setShowAlert] = useState(false);
             const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
             const [documentToReplace, setDocumentToReplace] = useState<any | null>(null);
 const [isAddDocOpen, setIsAddDocOpen] = useState(false);
+            const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+            const scrollToSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             const handleReplaceDocument = (doc: any) => {
                 setDocumentToReplace(doc);
@@ -392,20 +384,30 @@ const TelechargerRecu = async () => {
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Retour
                             </Button>
-                            <div className="bg-gradient-to-r from-primary/10 to-blue-50 rounded-xl p-8 mb-8">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-6">
+                            <div className="bg-gradient-to-br from-primary/10 via-background to-blue-50 rounded-2xl border p-4 sm:p-6 lg:p-8 mb-8 shadow-sm">
+                                <div className="mb-5 flex items-center justify-between gap-3 border-b pb-4">
+                                    <span className="text-sm font-medium text-muted-foreground">Mon espace candidat</span>
+                                    <div className="hidden sm:flex items-center gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => scrollToSection('notifications')}><Bell className="h-4 w-4 mr-2"/>Notifications</Button>
+                                        <Button variant="outline" size="sm" onClick={() => scrollToSection('candidate-profile')}><UserCircle className="h-4 w-4 mr-2"/>Profil</Button>
+                                        <Button variant="outline" size="sm" onClick={() => scrollToSection('candidate-settings')}><Settings className="h-4 w-4 mr-2"/>Paramètres</Button>
+                                    </div>
+                                    <Button variant="outline" size="icon" className="sm:hidden" onClick={() => setQuickMenuOpen(value => !value)} aria-label="Ouvrir le menu">{quickMenuOpen ? <X className="h-5 w-5"/> : <Menu className="h-5 w-5"/>}</Button>
+                                </div>
+                                {quickMenuOpen && <div className="mb-5 grid gap-2 sm:hidden"><Button variant="ghost" className="justify-start" onClick={() => {scrollToSection('notifications');setQuickMenuOpen(false);}}><Bell className="h-4 w-4 mr-2"/>Notifications</Button><Button variant="ghost" className="justify-start" onClick={() => {scrollToSection('candidate-profile');setQuickMenuOpen(false);}}><UserCircle className="h-4 w-4 mr-2"/>Profil</Button><Button variant="ghost" className="justify-start" onClick={() => {scrollToSection('candidate-settings');setQuickMenuOpen(false);}}><Settings className="h-4 w-4 mr-2"/>Paramètres</Button></div>}
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left">
                                         <CandidatePhotoDisplay
                                             photoPath={photoPath}
                                             candidateName={`${candidat?.prncan} ${candidat?.nomcan}`}
                                             size="lg"
                                         />
                                         <div>
-                                            <h1 className="text-4xl font-bold text-foreground mb-2">Tableau de Bord Candidat</h1>
+                                            <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2">Tableau de bord candidat</h1>
                                             <p className="text-xl text-muted-foreground mb-1">
                                                 Bienvenue, {candidat?.prncan} {candidat?.nomcan}
                                             </p>
-                                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                                                 <div className="flex items-center">
                                                     <Mail className="h-4 w-4 mr-1" />
                                                     {candidat?.maican}
@@ -417,7 +419,7 @@ const TelechargerRecu = async () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-center lg:text-right">
                                         <Badge variant="outline" className="text-lg px-4 py-2 mb-2">
                                             NUPCAN: {candidat?.nupcan}
                                         </Badge>
@@ -613,13 +615,21 @@ const TelechargerRecu = async () => {
                         </div>
 
                         {candidat?.nupcan && (
-                            <div className="mb-8">
+                            <div className="mb-8 scroll-mt-24" id="notifications">
                                 <NotificationPanel nupcan={candidat.nupcan} />
                             </div>
                         )}
 
+                        <Card id="candidate-settings" className="mb-8 scroll-mt-24">
+                            <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5"/>Paramètres du compte</CardTitle></CardHeader>
+                            <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div><p className="font-medium">Session de candidature</p><p className="text-sm text-muted-foreground">Quittez cet espace avant d’utiliser un appareil partagé.</p></div>
+                                <Button variant="outline" onClick={() => navigate('/connexion')}>Se déconnecter</Button>
+                            </CardContent>
+                        </Card>
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                            <Card>
+                            <Card id="candidate-profile" className="scroll-mt-24">
                                 <CardHeader>
                                     <CardTitle className="flex items-center">
                                         <User className="h-5 w-5 mr-2" />
@@ -787,7 +797,7 @@ const TelechargerRecu = async () => {
                                                         {/* Nom et statut */}
                                                         <div className="flex items-center justify-between mb-2">
                                                             <span className="font-medium truncate">{doc.nomdoc || 'Sans nom'}</span>
-                                                        <StatusBadge status={doc.document_statut} />
+                                                        <DocumentStatusBadge status={doc.document_statut} />
                                                         </div>
 
                                                         {/* Type et infos */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Navigate} from 'react-router-dom';
+import {Navigate, useLocation} from 'react-router-dom';
 import {useAdminAuth} from '@/contexts/AdminAuthContext';
 
 interface AdminProtectedRouteProps {
@@ -7,7 +7,8 @@ interface AdminProtectedRouteProps {
 }
 
 const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({children}) => {
-    const {isAuthenticated, isLoading} = useAdminAuth();
+    const {isAuthenticated, isLoading, admin} = useAdminAuth();
+    const location = useLocation();
 
     if (isLoading) {
         return (
@@ -22,6 +23,9 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({children}) => 
 
     if (!isAuthenticated) {
         return <Navigate to="/admin/login" replace/>;
+    }
+    if (admin?.mustChangePassword && location.pathname !== '/admin/profile') {
+        return <Navigate to="/admin/profile" replace state={{ passwordRequired: true }}/>;
     }
 
     return <>{children}</>;

@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import AdminLayout from '@/components/admin/AdminLayout';
 import CandidatesList from '@/components/admin/CandidatesList';
 import DocumentValidation from '@/components/admin/DocumentValidation';
 import GradeManagement from '@/components/admin/GradeManagement';
@@ -198,9 +197,7 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
 
     if (statsLoading) {
         return (
-            <AdminLayout>
-                <div className="p-8 text-center">Chargement des statistiques...</div>
-            </AdminLayout>
+            <div className="p-8 text-center">Chargement des statistiques...</div>
         );
     }
 
@@ -208,9 +205,9 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
     return (
         
 
-            <div className="p-8">
+            <div className="space-y-6">
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold mb-2">Tableau de Bord Administration</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2">Tableau de bord</h1>
                     <p className="text-muted-foreground">Gestion par concours
                         - {adminData.etablissement_nom || 'École Normale Supérieure'}</p>
                 </div>
@@ -219,12 +216,6 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                 <NotificationAlerts />
 
                 <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
-                        <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-                        <TabsTrigger value="concours">Concours</TabsTrigger>
-                    
-
-                    </TabsList>
 
                     <TabsContent value="overview" className="space-y-6">
                         {/* Statistiques globales */}

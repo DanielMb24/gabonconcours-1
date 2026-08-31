@@ -36,6 +36,17 @@ export interface AdminCandidatureData {
 }
 
 class AdminCandidatureService {
+    async updateStatus(applicationId: string | number, status: 'under_review'|'approved'|'rejected'|'cancelled', reason?: string) {
+        return apiService.makeRequest(`/admin/applications/${applicationId}/status`, 'PATCH', {status, reason});
+    }
+
+    async updateCandidate(applicationId: string | number, data: Record<string, unknown>) {
+        return apiService.makeRequest(`/admin/applications/${applicationId}/candidate`, 'PATCH', data);
+    }
+
+    async cancelDraft(applicationId: string | number) {
+        return apiService.makeRequest(`/admin/applications/${applicationId}`, 'DELETE');
+    }
     async getAllCandidaturesByConcours(concoursId: number): Promise<AdminCandidatureData[]> {
         try {
             console.log('AdminCandidatureService: Récupération candidatures pour concours:', concoursId);

@@ -64,6 +64,7 @@ import GestionConcoursFilieresPage from './pages/admin/GestionConcoursFilieresPa
 import MessagerieAdminPage from './pages/admin/MessagerieAdminPage';
 import MatieresManagementPage from './pages/admin/MatieresManagementPage';
 import APropos from './pages/APropos';
+import Archives from './pages/admin/Archives';
 
 
 const queryClient = new QueryClient({
@@ -152,6 +153,7 @@ function App() {
                             <Route path="niveaux" element={<GestionNiveaux/>}/>
                             <Route path="filieres" element={<GestionFilieres/>}/>
                             <Route path="notes" element={<GradeManagement/>}/>
+                            <Route path="archives" element={<Archives/>}/>
                             <Route path="sous-admins" element={<GestionSousAdmins/>}/>
                             <Route path="profile" element={<AdminProfileSettings />} />
 

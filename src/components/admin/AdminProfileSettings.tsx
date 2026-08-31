@@ -80,6 +80,9 @@ const AdminProfileSettings: React.FC = () => {
             if (response.success) {
                 toast({ title: 'Succès', description: 'Mot de passe modifié avec succès' });
                 setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+                const updatedAdmin = { ...admin, mustChangePassword: false };
+                setAdmin(updatedAdmin);
+                localStorage.setItem('adminData', JSON.stringify(updatedAdmin));
             } else throw new Error(response.message);
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Erreur inconnue';
@@ -91,6 +94,7 @@ const AdminProfileSettings: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {admin.mustChangePassword && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">Pour sécuriser votre compte, remplacez le mot de passe temporaire avant d’accéder au tableau de bord.</div>}
             {/* Profil */}
             <Card>
                 <CardHeader>
@@ -163,6 +167,7 @@ const AdminProfileSettings: React.FC = () => {
                                 setPasswordData({ ...passwordData, new_password: e.target.value })
                             }
                             required
+                            minLength={10}
                         />
                         <Label>Confirmer le mot de passe</Label>
                         <Input

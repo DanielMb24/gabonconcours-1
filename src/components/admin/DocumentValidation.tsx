@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
+import DocumentStatusBadge from '@/components/documents/DocumentStatusBadge';
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from '@/components/ui/dialog';
 import {Textarea} from '@/components/ui/textarea';
 import {Label} from '@/components/ui/label';
@@ -45,14 +46,7 @@ const DocumentValidation: React.FC<DocumentValidationProps> = ({
     const [validating, setValidating] = useState(false);
 
     const getStatusBadge = (statut: string) => {
-        switch (statut) {
-            case 'valide':
-                return <Badge className="bg-green-100 text-green-800">Validé</Badge>;
-            case 'rejete':
-                return <Badge className="bg-red-100 text-red-800">Rejeté</Badge>;
-            default:
-                return <Badge className="bg-orange-100 text-orange-800">En attente</Badge>;
-        }
+        return <DocumentStatusBadge status={statut}/>;
     };
 
     const handleValidation = async (document: Document, statut: 'valide' | 'rejete') => {
