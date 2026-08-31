@@ -1,4 +1,4 @@
-import React, {memo, useState} from 'react';
+import React, {createContext, memo, useContext, useState} from 'react';
 import {Outlet, Link, useLocation} from 'react-router-dom';
 import {Button} from '@/components/ui/button';
 import {
@@ -16,10 +16,15 @@ import {
     GraduationCap,
     BookOpen,
     Menu,
-    X
-    ,Archive
+    X,
+    Archive,
+    MessageSquare,
+    UserCircle
 } from 'lucide-react';
 import {useAdminAuth} from '@/contexts/AdminAuthContext';
+import NotificationBadge from '@/components/admin/NotificationBadge';
+
+const AdminLayoutContext = createContext(false);
 
 interface AdminLayoutProps {
     children?: React.ReactNode;
@@ -29,6 +34,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
     const location = useLocation();
     const {admin, logout} = useAdminAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const isNestedLayout = useContext(AdminLayoutContext);
+
+    // Certaines anciennes pages incluent encore AdminLayout alors que la route le fournit déjà.
+    // Dans ce cas, on évite de rendre une seconde barre latérale et un second en-tête.
+    if (isNestedLayout) return <>{children || <Outlet/>}</>;
 
     // Menu items selon le rôle
     const getMenuItems = () => {
@@ -58,10 +68,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                 { path: '/admin/candidats', label: 'Candidatures', icon: Users },
                 { path: '/admin/dossiers', label: 'Documents', icon: FileText },
                 { path: '/admin/paiements', label: 'Paiements', icon: DollarSign },
-                { path: '/admin/messagerie', label: 'Messages', icon: Settings },
-                { path: '/admin/statistiques', label: 'Statistiques', icon: BarChart3 },
+                { path: '/admin/messagerie', label: 'Messages', icon: MessageSquare },
                 { path: '/admin/notes', label: 'Notes', icon: GraduationCap },
                 { path: '/admin/archives', label: 'Archives', icon: Archive },
+                { path: '/admin/sous-admins', label: 'Sous-administrateurs', icon: UserCog },
                 { path: '/admin/profile', label: 'Profil', icon: Settings }
             ];
         }
@@ -93,24 +103,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
         return location.pathname.startsWith(path);
     };
 
-    console.log('Rendering AdminLayout for path:', location.pathname);
-
     return (
-        <div className="min-h-screen bg-background flex">
+        <AdminLayoutContext.Provider value={true}>
+        <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
             {mobileMenuOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setMobileMenuOpen(false)}/>} 
-            <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-card border-r border-border flex flex-col transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-64 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+            <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 flex flex-col shadow-xl transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shadow-none ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="p-6">
                     <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-foreground">GabConcours Admin</h2><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(false)}><X className="h-5 w-5"/></Button></div>
                     <p className="text-sm text-muted-foreground mt-1">Panel d'administration</p>
                 </div>
 
-                <nav className="px-4 space-y-2 flex-1">
+                <nav className="px-4 pb-4 space-y-1 flex-1 overflow-y-auto">
                     {menuItems.map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                            className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${
                                 isActive(item.path)
                                     ? 'bg-primary text-primary-foreground'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -154,8 +163,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
 
             {/* Main Content */}
             <div className="min-w-0 flex-1 flex flex-col">
-                <header className="sticky top-0 z-20 bg-card/95 backdrop-blur border-b border-border px-4 sm:px-6 py-3">
-                    <div className="flex items-center justify-between">
+                <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200 px-4 sm:px-6 py-3">
+                    <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <Button variant="outline" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)} aria-label="Ouvrir le menu"><Menu className="h-5 w-5"/></Button>
                             <div>
@@ -165,19 +174,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                             </p>
                             </div>
                         </div>
-                        <div className="hidden md:flex items-center space-x-4">
-              <span className="text-sm text-muted-foreground">
-                Connecté en tant que <strong>{admin?.role === 'reviewer' ? 'réviseur / validation' : admin?.role}</strong>
-              </span>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            <NotificationBadge />
+                            <Button variant="ghost" size="icon" asChild aria-label="Profil administrateur"><Link to="/admin/profile"><UserCircle className="h-5 w-5"/></Link></Button>
+                            <Button variant="ghost" size="icon" asChild aria-label="Paramètres"><Link to="/admin/profile"><Settings className="h-5 w-5"/></Link></Button>
+                            <Button variant="ghost" size="icon" onClick={logout} aria-label="Déconnexion" className="text-red-600 hover:bg-red-50 hover:text-red-700"><LogOut className="h-5 w-5"/></Button>
                         </div>
                     </div>
                 </header>
 
                 <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-                    {children || <Outlet/>}
+                    <div className="mx-auto max-w-[1600px]">{children || <Outlet/>}</div>
                 </main>
             </div>
         </div>
+        </AdminLayoutContext.Provider>
     );
 });
 

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import ExportModal from '@/components/admin/ExportModal';
 
@@ -96,7 +95,6 @@ interface DashboardStats {
 
 const DashboardAdmin: React.FC = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'candidats' | 'documents' | 'notes' | 'messages'>('overview');
     const [selectedConcours, setSelectedConcours] = useState<number | null>(null);
     const {admin, token, isLoading} = useAdminAuth();
 const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -206,21 +204,20 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
         
 
             <div className="space-y-6">
-                <div className="mb-8">
-                    <h1 className="text-2xl sm:text-3xl font-bold mb-2">Tableau de bord</h1>
-                    <p className="text-muted-foreground">Gestion par concours
+                <div className="rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-700 p-5 text-white shadow-lg sm:p-7">
+                    <p className="text-sm font-medium text-blue-100">Vue d’ensemble</p>
+                    <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Tableau de bord</h1>
+                    <p className="mt-2 text-blue-100">Gestion par concours
                         - {adminData.etablissement_nom || 'École Normale Supérieure'}</p>
                 </div>
 
                 {/* Notifications / Alertes */}
                 <NotificationAlerts />
 
-                <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="space-y-6">
-
-                    <TabsContent value="overview" className="space-y-6">
+                <div className="space-y-6">
                         {/* Statistiques globales */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <Card>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            <Card className="border-0 shadow-sm ring-1 ring-slate-200">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Total Candidats</CardTitle>
                                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -233,7 +230,7 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                                 </CardContent>
                             </Card>
 
-                            <Card>
+                            <Card className="border-0 shadow-sm ring-1 ring-slate-200">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Documents</CardTitle>
                                     <FileText className="h-4 w-4 text-muted-foreground" />
@@ -244,7 +241,7 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                                 </CardContent>
                             </Card>
 
-                            <Card>
+                            <Card className="border-0 shadow-sm ring-1 ring-slate-200">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Paiements</CardTitle>
                                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -259,7 +256,7 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                                 </CardContent>
                             </Card>
 
-                            <Card>
+                            <Card className="border-0 shadow-sm ring-1 ring-slate-200">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Messages</CardTitle>
                                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -272,9 +269,9 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                         </div>
 
                         {/* Concours actifs */}
-                        <Card>
+                        <Card className="border-0 shadow-sm ring-1 ring-slate-200">
                             <CardHeader>
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <CardTitle className="flex items-center gap-2">
                                         <Trophy className="h-5 w-5" />
                                         Concours Actifs
@@ -389,14 +386,7 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                         {/*</div>*/}
 
 
-                    </TabsContent>
-
-                    <TabsContent value="concours">
-                        <ConcoursBasedDashboard  />
-                    </TabsContent>
-
-                  
-                </Tabs>
+                </div>
                 <ExportModal
   open={exportModalOpen}
   onClose={() => setExportModalOpen(false)}

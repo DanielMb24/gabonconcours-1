@@ -29,8 +29,6 @@ const NotificationBadge = () => {
 
     const unreadCount = notifications?.length || 0;
 
-    if (unreadCount === 0) return null;
-
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -51,6 +49,7 @@ const NotificationBadge = () => {
                     <h3 className="font-semibold">Notifications ({unreadCount})</h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
+                    {unreadCount === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Aucune nouvelle notification</p>}
                     {notifications?.slice(0, 5).map((notif: any) => (
                         <DropdownMenuItem
                             key={notif.id}
@@ -71,9 +70,9 @@ const NotificationBadge = () => {
                         variant="ghost" 
                         size="sm" 
                         className="w-full"
-                        onClick={() => navigate('/admin/notifications')}
+                        onClick={() => navigate('/admin/messagerie')}
                     >
-                        Voir toutes les notifications
+                        Ouvrir la messagerie
                     </Button>
                 </div>
             </DropdownMenuContent>
