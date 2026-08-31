@@ -20,7 +20,7 @@ const SubAdminsManager: React.FC = () => {
     prenom: "",
     email: "",
     password: "",
-    admin_role: "applications_manager",
+    admin_role: "grades_entry",
   });
 
 
@@ -45,7 +45,7 @@ const SubAdminsManager: React.FC = () => {
         description: "Sous-admin créé ! Un email avec les identifiants a été envoyé." 
       });
       queryClient.invalidateQueries({ queryKey: ["subAdmins", form.etablissement_id] });
-      setForm({ ...form, nom: "", prenom: "", email: "", admin_role: "applications_manager" });
+      setForm({ ...form, nom: "", prenom: "", email: "", admin_role: "grades_entry" });
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || "Impossible d’ajouter le sous-admin.";
@@ -94,7 +94,7 @@ const SubAdminsManager: React.FC = () => {
         <CardContent>
           {/* --- FORMULAIRE --- */}
           <div className="space-y-4 mb-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input name="nom" placeholder="Nom" value={form.nom} onChange={handleChange} />
               <Input name="prenom" placeholder="Prénom" value={form.prenom} onChange={handleChange} />
             </div>
@@ -107,14 +107,8 @@ const SubAdminsManager: React.FC = () => {
                 <SelectValue placeholder="Choisir un rôle" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="applications_manager">Gestion des candidatures</SelectItem>
-                <SelectItem value="documents_validator">Validation des documents</SelectItem>
-                <SelectItem value="documents_viewer">Consultation des documents uniquement</SelectItem>
-                <SelectItem value="grades_entry">Saisie des notes</SelectItem>
-                <SelectItem value="grades_validator">Validation des notes</SelectItem>
-                <SelectItem value="payments_viewer">Consultation des paiements</SelectItem>
-                <SelectItem value="reports_viewer">Consultation des rapports</SelectItem>
-                <SelectItem value="messaging_agent">Gestion de la messagerie</SelectItem>
+                <SelectItem value="grades_entry">Gestion des notes</SelectItem>
+                <SelectItem value="documents_validator">Gestion des documents</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -133,9 +127,9 @@ const SubAdminsManager: React.FC = () => {
             ) : subAdmins && subAdmins.length > 0 ? (
                 <ul className="space-y-3">
                   {subAdmins.map((admin) => (
-                      <li key={admin.id} className="flex items-center justify-between border p-2 rounded">
+                      <li key={admin.id} className="flex flex-col gap-3 rounded border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <span>
-                    {admin.nom} {admin.prenom} ({admin.email}) — <b>{admin.admin_role}</b>
+                    {admin.nom} {admin.prenom} ({admin.email}) — <b>{admin.admin_role === 'grades_entry' ? 'Gestion des notes' : 'Gestion des documents'}</b>
                   </span>
                         <Button
                             variant="destructive"

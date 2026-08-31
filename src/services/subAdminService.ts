@@ -8,7 +8,7 @@ export interface SubAdmin {
     email: string;
     etablissement_id: number;
     created_by: number;
-    admin_role: "applications_manager" | "documents_validator" | "documents_viewer" | "grades_entry" | "grades_validator" | "payments_viewer" | "reports_viewer" | "messaging_agent";
+    admin_role: "documents_validator" | "grades_entry";
 }
 
 export interface CreateSubAdminInput {
@@ -18,7 +18,7 @@ export interface CreateSubAdminInput {
     prenom: string;
     email: string;
     password?: string;
-    admin_role: "applications_manager" | "documents_validator" | "documents_viewer" | "grades_entry" | "grades_validator" | "payments_viewer" | "reports_viewer" | "messaging_agent";
+    admin_role: "documents_validator" | "grades_entry";
 }
 
 export const subAdminService = {

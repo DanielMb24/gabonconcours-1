@@ -21,7 +21,10 @@ import {
     ChevronRight,
     AlertCircle,
     MessageSquare,
-    Award
+    Award,
+    Settings,
+    Menu,
+    X
 } from 'lucide-react';
 import { candidatePortalService } from '@/services/candidatePortalService';
 import { BACKEND_ORIGIN } from '@/services/api';
@@ -49,9 +52,6 @@ interface Candidature {
     created_at: string;
     documents_count: number;
     documents_valides: number;
-    documents_requis?: number;
-    documents_manquants?: number;
-    paiement_autorise?: boolean;
     paiement_statut: string | null;
     etapes: {
         inscription: boolean;
@@ -91,6 +91,7 @@ const DashboardNipcan: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [actualNipcan, setActualNipcan] = useState<string>('');
     const [isLoadingNipcan, setIsLoadingNipcan] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const convertToNipcan = async () => {
@@ -342,7 +343,7 @@ const DashboardNipcan: React.FC = () => {
                             <CardContent>
                                 <div className="space-y-4">
                                     {dashboardData.candidatures.slice(0, 3).map((candidature) => (
-                                        <div key={candidature.nupcan} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div key={candidature.nupcan} className="flex flex-col gap-4 p-4 border rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition-colors sm:flex-row sm:items-center sm:justify-between">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <GraduationCap className="h-4 w-4 text-gray-400" />
@@ -350,7 +351,7 @@ const DashboardNipcan: React.FC = () => {
                                                 </div>
                                                 <p className="text-sm text-gray-600 ml-6">{candidature.filiere.nomfil}</p>
                                                 <p className="text-xs text-gray-500 mt-1 ml-6">NUPCAN: {candidature.nupcan}</p>
-                                                <div className="flex items-center gap-4 ml-6 mt-2">
+                                                <div className="flex flex-col gap-2 ml-6 mt-2 sm:flex-row sm:items-center sm:gap-4">
                                                     <div className="flex items-center gap-1 text-xs">
                                                         <FileText className="h-3 w-3 text-blue-600" />
                                                         <span className="text-gray-600">
@@ -365,7 +366,7 @@ const DashboardNipcan: React.FC = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end">
                                                 <div className="text-right">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         {getStatutIcon(candidature.statut)}
@@ -531,18 +532,12 @@ const DashboardNipcan: React.FC = () => {
                                         <Button 
                                             variant="outline" 
                                             className="gap-2"
-                                            disabled={!currentCandidature.paiement_autorise}
                                             onClick={() => navigate(`/paiement/continue/${encodeURIComponent(currentCandidature.nupcan)}`)}
                                         >
                                             <CreditCard className="h-4 w-4" />
                                             Paiement
                                         </Button>
                                     </div>
-                                    {!currentCandidature.paiement_autorise && (
-                                        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
-                                            Téléversez toutes les pièces obligatoires avant de pouvoir payer. La validation administrative interviendra après le paiement.
-                                        </p>
-                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -597,6 +592,15 @@ const DashboardNipcan: React.FC = () => {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+            );
+        }
+
+        if (activeTab === 'settings') {
+            return (
+                <div className="space-y-6">
+                    <div><h2 className="text-2xl font-bold text-gray-900">Paramètres</h2><p className="mt-1 text-gray-600">Gérez votre session et vos préférences d’accès.</p></div>
+                    <Card><CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-gray-900">Session candidat</p><p className="text-sm text-gray-600">Déconnectez-vous lorsque vous utilisez un appareil partagé.</p></div><Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/>Se déconnecter</Button></CardContent></Card>
                 </div>
             );
         }
@@ -671,18 +675,18 @@ const DashboardNipcan: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 lg:flex overflow-x-hidden">
-            <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col fixed inset-y-0 left-0">
+        <div className="min-h-screen bg-slate-50 flex">
+            {mobileMenuOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={()=>setMobileMenuOpen(false)}/>} 
+            <aside className={`w-72 lg:w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 z-50 h-screen transition-transform lg:translate-x-0 ${mobileMenuOpen?'translate-x-0':'-translate-x-full'}`}>
                 <div className="p-6 border-b border-gray-200">
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                    <div className="flex items-start justify-between"><div><h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                         GABConcours
-                    </h1>
-                    <p className="text-sm text-gray-600 mt-1">Espace Candidat</p>
+                    </h1><p className="text-sm text-gray-600 mt-1">Espace Candidat</p></div><Button variant="ghost" size="icon" className="lg:hidden" onClick={()=>setMobileMenuOpen(false)}><X className="h-5 w-5"/></Button></div>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <button
-                        onClick={() => setActiveTab('overview')}
+                        onClick={() => {setActiveTab('overview');setMobileMenuOpen(false);}}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                             activeTab === 'overview' 
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
@@ -726,6 +730,7 @@ const DashboardNipcan: React.FC = () => {
                                                 onClick={() => {
                                                     setSelectedCandidature(candidature.nupcan);
                                                     setActiveTab('candidatures');
+                                                    setMobileMenuOpen(false);
                                                 }}
                                                 className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
                                                     selectedCandidature === candidature.nupcan
@@ -751,7 +756,7 @@ const DashboardNipcan: React.FC = () => {
                     </div>
 
                     <button
-                        onClick={() => setActiveTab('documents')}
+                        onClick={() => {setActiveTab('documents');setMobileMenuOpen(false);}}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                             activeTab === 'documents' 
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
@@ -764,7 +769,7 @@ const DashboardNipcan: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setActiveTab('notifications')}
+                        onClick={() => {setActiveTab('notifications');setMobileMenuOpen(false);}}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                             activeTab === 'notifications' 
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
@@ -777,7 +782,7 @@ const DashboardNipcan: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setActiveTab('messages')}
+                        onClick={() => {setActiveTab('messages');setMobileMenuOpen(false);}}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                             activeTab === 'messages' 
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
@@ -790,7 +795,7 @@ const DashboardNipcan: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setActiveTab('resultats')}
+                        onClick={() => {setActiveTab('resultats');setMobileMenuOpen(false);}}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                             activeTab === 'resultats' 
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
@@ -803,7 +808,7 @@ const DashboardNipcan: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setActiveTab('profil')}
+                        onClick={() => {setActiveTab('profil');setMobileMenuOpen(false);}}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                             activeTab === 'profil' 
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
@@ -813,6 +818,7 @@ const DashboardNipcan: React.FC = () => {
                         <User className="h-5 w-5" />
                         <span className="font-medium">Mon Profil</span>
                     </button>
+                    <button onClick={() => {setActiveTab('settings');setMobileMenuOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'settings'?'bg-blue-600 text-white shadow-lg shadow-blue-200':'text-gray-700 hover:bg-gray-100'}`}><Settings className="h-5 w-5"/><span className="font-medium">Paramètres</span></button>
                 </nav>
 
                 <div className="p-4 border-t border-gray-200">
@@ -826,41 +832,14 @@ const DashboardNipcan: React.FC = () => {
                 </div>
             </aside>
 
-            <main className="min-w-0 flex-1 lg:ml-64">
-                <header className="lg:hidden sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-                    <div className="flex items-center justify-between px-4 py-3">
-                        <div>
-                            <p className="font-bold text-blue-700">GABConcours</p>
-                            <p className="text-xs text-slate-500 truncate max-w-[220px]">
-                                {dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}
-                            </p>
-                        </div>
-                        <button onClick={handleLogout} className="p-2 text-red-600" aria-label="Se déconnecter">
-                            <LogOut className="h-5 w-5" />
-                        </button>
+            <main className="min-w-0 flex-1 lg:ml-64 overflow-y-auto">
+                <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3"><Button variant="outline" size="icon" className="shrink-0 lg:hidden" onClick={()=>setMobileMenuOpen(true)} aria-label="Ouvrir le menu"><Menu className="h-5 w-5"/></Button><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}</p><p className="hidden truncate text-xs text-slate-500 sm:block">{dashboardData.candidat.nipcan}</p></div></div>
+                        <div className="flex items-center gap-1 sm:gap-2"><Button variant="ghost" size="icon" onClick={()=>setActiveTab('notifications')} disabled={!selectedCandidature} aria-label="Notifications"><Bell className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('profil')} aria-label="Profil"><User className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('settings')} aria-label="Paramètres"><Settings className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Déconnexion" className="text-red-600 hover:bg-red-50 hover:text-red-700"><LogOut className="h-5 w-5"/></Button></div>
                     </div>
-                    <nav className="flex gap-1 overflow-x-auto px-3 pb-3 [scrollbar-width:none]" aria-label="Navigation du dashboard">
-                        {[
-                            ['overview', 'Vue d’ensemble', LayoutDashboard],
-                            ['candidatures', 'Candidatures', FileText],
-                            ['documents', 'Documents', FileText],
-                            ['notifications', 'Notifications', Bell],
-                            ['messages', 'Messages', MessageSquare],
-                            ['resultats', 'Résultats', Award],
-                            ['profil', 'Profil', User],
-                        ].map(([tab, label, Icon]: any[]) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                disabled={!selectedCandidature && !['overview', 'candidatures', 'profil'].includes(tab)}
-                                className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border ${activeTab === tab ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-700'} disabled:opacity-40`}
-                            >
-                                <Icon className="h-4 w-4" /> {label}
-                            </button>
-                        ))}
-                    </nav>
                 </header>
-                <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 overflow-hidden">
+                <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                     {renderContent()}
                 </div>
             </main>
