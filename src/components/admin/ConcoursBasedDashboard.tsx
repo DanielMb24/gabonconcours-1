@@ -313,7 +313,7 @@ const ConcoursCard: React.FC<ConcoursCardProps> = ({concours, onSelect, onEdit})
 
 const ConcoursBasedDashboard = () => {
     const {admin, token, isLoading} = useAdminAuth();
-    const [selectedConcours, setSelectedConcours] = useState<number | null>(null);
+    const [selectedConcours, setSelectedConcours] = useState<string | number | null>(null);
     const [editingConcours, setEditingConcours] = useState<any | null>(null);
 
     // Définir le token dans apiService
@@ -323,24 +323,14 @@ const ConcoursBasedDashboard = () => {
         }
     }, [token]);
 
-    // Wait for auth loading to complete
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const establishmentId = admin?.etablissement_object_id || admin?.etablissement_id;
     const {data: concours, isLoading: isLoadingConcours, refetch: refetchConcours} = useQuery({
-        queryKey: ['adminConcours', admin?.etablissement_id],
-        queryFn: () => adminConcoursService.getConcoursByEtablissement(admin?.etablissement_id || 0),
-        enabled: !!admin?.etablissement_id && !!token,
+        queryKey: ['adminConcours', establishmentId],
+        queryFn: () => adminConcoursService.getConcoursByEtablissement(establishmentId!),
+        enabled: !!establishmentId && !!token,
         retry: 2,
     });
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const {data: candidatures, isLoading: isLoadingCandidatures} = useQuery({
         queryKey: ['adminCandidatures', selectedConcours],
         queryFn: () => adminCandidatureService.getAllCandidaturesByConcours(selectedConcours!),
@@ -402,7 +392,7 @@ const ConcoursBasedDashboard = () => {
     const statsPaiements = getStatistiquesPaiements();
     const statsDocuments = getStatistiquesDocuments();
 
-    if (isLoadingConcours) {
+    if (isLoading || isLoadingConcours) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -424,7 +414,7 @@ const ConcoursBasedDashboard = () => {
 
                 {/* Grille des concours */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {concours && Array.isArray(concours) ? (
+                    {Array.isArray(concours) && concours.length > 0 ? (
                         concours.map((c: any) => (
                             <ConcoursCard
                                 key={c.id}
@@ -473,7 +463,7 @@ const ConcoursBasedDashboard = () => {
             </div>
 
             {/* Statistiques */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm">Total Candidatures</CardTitle>

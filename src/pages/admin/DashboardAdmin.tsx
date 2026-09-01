@@ -310,7 +310,7 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
                                                         <div className="flex justify-between text-sm">
                                                             <span>Date limite:</span>
                                                             <Badge variant="outline">
-                                                                {new Date(concours.dlican).toLocaleDateString('fr-FR')}
+                                                                {concours.fincnc ? new Date(concours.fincnc).toLocaleDateString('fr-FR') : 'Non définie'}
                                                             </Badge>
                                                         </div>
                                                         <div className="flex justify-between text-sm">

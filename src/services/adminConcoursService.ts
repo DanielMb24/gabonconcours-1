@@ -16,7 +16,6 @@ class AdminConcoursService {
     etablissement_id: string | number;
     async getConcoursByEtablissement(etablissementId: string | number): Promise<AdminConcoursData[]> {
         try {
-            console.log('AdminConcoursService: Récupération concours pour établissement:', etablissementId);
             const response = await apiService.makeRequest<AdminConcoursData[]>(
                 `/admin/etablissement/${etablissementId}/concours`,
                 'GET'
