@@ -295,7 +295,7 @@ const Documents = () => {
       }
 
       setTimeout(() => {
-        navigate(`/dashboard/${encodeURIComponent(numeroCandidature || '')}?refresh=true`);
+        navigate(`/dossier/recap/${encodeURIComponent(numeroCandidature || '')}`);
       }, 1200);
     },
     onError: (error: Error) => {
@@ -490,7 +490,7 @@ const Documents = () => {
         title: 'Aucune nouvelle pièce',
         description: 'Votre dossier est déjà à jour.',
       });
-      navigate(`/dashboard/${encodeURIComponent(numeroCandidature)}?refresh=true`);
+      navigate(`/dossier/recap/${encodeURIComponent(numeroCandidature)}`);
       return;
     }
 

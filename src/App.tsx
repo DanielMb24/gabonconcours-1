@@ -24,6 +24,7 @@ import NotFound from '@/pages/NotFound';
 import StatutCandidature from '@/pages/StatutCandidature';
 import DashboardCandidat from '@/pages/DashboardCandidat';
 import RecapPaiement from '@/pages/RecapPaiement';
+import DossierRecap from '@/pages/DossierRecap';
 import ConcoursDetails from "@/pages/ConcoursDetails";
 import GradeManagement from "@/pages/admin/GradeManagement";
 
@@ -116,6 +117,7 @@ function App() {
                         <Route path="/documents/continue/:nupcan" element={<DocumentsContinue/>}/>
                         <Route path="/documentPage/:nupcan" element={<DocumentPage/>}/>
                         <Route path="/paiement/continue/:nupcan" element={<PaiementContinue/>}/>
+                        <Route path="/dossier/recap/:nupcan" element={<DossierRecap/>}/>
                         <Route path="/succes-continue/:nupcan" element={<SuccesContinue/>}/>
 
                         {/* Routes pour statut et connexion */}

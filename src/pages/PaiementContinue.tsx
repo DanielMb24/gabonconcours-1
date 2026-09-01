@@ -119,9 +119,7 @@ const Paiement = () => {
                     nupcan: candidat.nupcan || numeroCandidature,
                     montant: 0.00,
                     methode: 'gorri', // Méthode pour identifier un paiement gratuit (is_gorri)
-                    statut: 'en_attente',
-                    numero_telephone: candidat.telcan || '00000000',
-                    reference_paiement: `GRATUIT-${Date.now()}` // Référence spéciale
+                numero_telephone: candidat.telcan || '00000000',
                 };
 
                 if (!paiementGratuitData.nupcan) {
@@ -192,9 +190,7 @@ const Paiement = () => {
                 nupcan: candidat.nupcan || numeroCandidature, // Fallback sur numeroCandidature
                 montant: montant,
                 methode: selectedMethod,
-                statut: 'en_attente',
                 numero_telephone: phoneNumber,
-                reference_paiement: `PAY-${Date.now()}`
             };
 
             console.log('Données paiement:', paiementData);
@@ -214,13 +210,14 @@ const Paiement = () => {
                 throw new Error(response.message || 'Erreur lors du paiement');
             }
 
-            toast({
-                title: "Paiement initié",
-                description: "La demande a été transmise à l’opérateur. Le dossier sera transmis aux agents après confirmation sécurisée."
-            });
-
-            await updateProgression(numeroCandidature || '', 'paiement');
-            navigate(`/succes-continue/${encodeURIComponent(numeroCandidature || '')}`);
+            const paymentStatus = (response.data as any)?.statut;
+            if (paymentStatus === 'valide') {
+                await updateProgression(numeroCandidature, 'paiement');
+                navigate(`/succes-continue/${encodeURIComponent(numeroCandidature)}`);
+            } else {
+                toast({title: "Paiement initialisé", description: "La demande attend la confirmation sécurisée de l’opérateur."});
+                navigate(`/dossier/recap/${encodeURIComponent(numeroCandidature)}`);
+            }
 
         } catch (error: any) {
             console.error('Erreur paiement:', error);
