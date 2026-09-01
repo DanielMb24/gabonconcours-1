@@ -11,7 +11,8 @@ interface Admin {
     subAdminRole?: string;
     permissions?: string[];
     role: 'super_admin' | 'admin' | 'reviewer' | 'finance' | 'admin_etablissement'| 'sub_admin';
-    etablissement_id?: number;
+    etablissement_id?: string | number;
+    etablissement_object_id?: string;
     etablissement_nom?: string;
     mustChangePassword?: boolean;
 }

@@ -134,10 +134,11 @@ const [exportModalOpen, setExportModalOpen] = useState(false);
 
 
 
+    const establishmentId = admin?.etablissement_object_id || admin?.etablissement_id;
     const {data: concoursData, isLoading: isLoadingConcours} = useQuery({
-        queryKey: ['concours', admin?.etablissement_id],
-        queryFn: () => adminConcoursService.getConcoursByEtablissement(admin?.etablissement_id ??0),
-        enabled: !!admin?.etablissement_id && !!token,
+        queryKey: ['concours', establishmentId],
+        queryFn: () => adminConcoursService.getConcoursByEtablissement(establishmentId!),
+        enabled: !!establishmentId && !!token,
         retry: 2,
     });
 
