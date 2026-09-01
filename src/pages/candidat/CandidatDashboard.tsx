@@ -125,20 +125,20 @@ const CandidatDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen bg-slate-50 p-3 sm:p-5 lg:p-6">
+            <div className="w-full">
                 {/* Header */}
                 <div className="mb-8">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-700 p-5 text-white shadow-sm sm:flex-row sm:items-start sm:justify-between sm:p-6">
                         <div>
                             <h1 className="text-3xl font-bold mb-2">
                                 Bienvenue, {candidat?.prncan} {candidat?.nomcan}
                             </h1>
-                            <p className="text-muted-foreground">
+                            <p className="text-blue-100">
                                 NUPCAN: {nupcan}
                             </p>
                         </div>
-                        <Button variant="outline" onClick={handleLogout}>
+                        <Button variant="secondary" onClick={handleLogout}>
                             Déconnexion
                         </Button>
                     </div>
@@ -184,7 +184,7 @@ const CandidatDashboard = () => {
 
                     {/* Vue d'ensemble */}
                     <TabsContent value="overview" className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Documents</CardTitle>

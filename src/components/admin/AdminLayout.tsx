@@ -34,6 +34,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
     const location = useLocation();
     const {admin, logout} = useAdminAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
     const isNestedLayout = useContext(AdminLayoutContext);
 
     // Certaines anciennes pages incluent encore AdminLayout alors que la route le fournit déjà.
@@ -108,7 +109,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
             {mobileMenuOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setMobileMenuOpen(false)}/>} 
-            <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 flex flex-col shadow-xl transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shadow-none ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+            <aside className={`fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:w-64 lg:shadow-none ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} ${desktopMenuOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'}`}>
                 <div className="p-6">
                     <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-foreground">GabConcours Admin</h2><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(false)}><X className="h-5 w-5"/></Button></div>
                     <p className="text-sm text-muted-foreground mt-1">Panel d'administration</p>
@@ -162,11 +163,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
             </aside>
 
             {/* Main Content */}
-            <div className="min-w-0 flex-1 flex flex-col">
+            <div className={`min-w-0 flex-1 flex flex-col transition-[margin] duration-300 ${desktopMenuOpen ? 'lg:ml-64' : 'lg:ml-0'}`}>
                 <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200 px-4 sm:px-6 py-3">
-                    <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3">
+                    <div className="flex w-full items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)} aria-label="Ouvrir le menu"><Menu className="h-5 w-5"/></Button>
+                            <Button variant="outline" size="icon" className="shrink-0" onClick={() => {if (window.innerWidth >= 1024) setDesktopMenuOpen(value => !value); else setMobileMenuOpen(true);}} aria-label={desktopMenuOpen ? 'Replier le menu' : 'Ouvrir le menu'}><Menu className="h-5 w-5"/></Button>
                             <div>
                             <h1 className="text-lg font-semibold text-foreground">Administration</h1>
                             <p className="hidden sm:block text-sm text-muted-foreground">
@@ -183,8 +184,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-                    <div className="mx-auto max-w-[1600px]">{children || <Outlet/>}</div>
+                <main className="flex-1 overflow-x-hidden p-3 sm:p-5 lg:p-6">
+                    <div className="w-full min-w-0">{children || <Outlet/>}</div>
                 </main>
             </div>
         </div>

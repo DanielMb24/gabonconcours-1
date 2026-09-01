@@ -129,7 +129,7 @@ const Dossiers = () => {
         <AdminProtectedRoute>
             <AdminLayout>
                 <div className="space-y-6">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Validation des Documents</h1>
                             <p className="text-muted-foreground">Gérer et valider les documents des candidats</p>
@@ -137,7 +137,7 @@ const Dossiers = () => {
                     </div>
 
                     {/* Statistiques */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <Card>
                             <CardContent className="p-6">
                                 <div className="flex items-center space-x-3">
@@ -188,14 +188,14 @@ const Dossiers = () => {
                     <Card>
                         <CardHeader>
                             <CardTitle>Documents à valider</CardTitle>
-                            <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                                <div className="flex min-w-0 flex-1 items-center space-x-2">
                                     <Search className="h-4 w-4 text-muted-foreground"/>
                                     <Input
                                         placeholder="Rechercher..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="max-w-sm"
+                                        className="w-full sm:max-w-sm"
                                     />
                                 </div>
                                 <select

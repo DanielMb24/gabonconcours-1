@@ -112,7 +112,7 @@ const SuperAdminDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Statistiques principales */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <Card>
                             <CardContent className="p-6">
                                 <div className="flex items-center space-x-3">
@@ -168,7 +168,7 @@ const SuperAdminDashboard = () => {
                             <CardTitle>Actions Rapides</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                                 {quickActions.map((action, index) => (
                                     <div
                                         key={index}
