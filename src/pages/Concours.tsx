@@ -6,10 +6,12 @@ import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {Input} from '@/components/ui/input';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
-import {Calendar, MapPin, GraduationCap, Clock, Users, DollarSign, Search, Filter, X, ChevronLeft, ChevronRight} from 'lucide-react';
+import {Calendar, MapPin, GraduationCap, Clock, Users, DollarSign, Search, Filter, X, ChevronLeft, ChevronRight, RefreshCw} from 'lucide-react';
 import Layout from '@/components/Layout';
 import {apiService} from '@/services/api';
 import {Concours as ConcoursType} from '@/types/entities';
+import ErrorMessage from '@/components/ErrorMessage';
+import {Skeleton} from '@/components/ui/skeleton';
 
 const Concours = () => {
     const navigate = useNavigate();
@@ -30,9 +32,13 @@ const Concours = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 3;
 
-    const {data: concoursResponse, isLoading, error} = useQuery({
+    const {data: concoursResponse, isLoading, error, refetch, isFetching} = useQuery({
         queryKey: ['concours'],
-        queryFn: () => apiService.getConcours(),
+        queryFn: async () => {
+            const response = await apiService.getConcours<ConcoursType[]>();
+            if (!response.success) throw new Error(response.message || 'Impossible de charger les concours');
+            return response;
+        },
     });
 
     // Récupérer toutes les filières
@@ -194,13 +200,17 @@ const Concours = () => {
     if (isLoading) {
         return (
             <Layout>
-                <div className="flex justify-center items-center min-h-[400px]">
-                    <div className="text-center">
-                        <div
-                            className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p>Chargement des concours...</p>
+                <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" aria-busy="true">
+                    <div className="mb-10 space-y-3 text-center">
+                        <Skeleton className="mx-auto h-10 w-72 max-w-full" />
+                        <Skeleton className="mx-auto h-5 w-[32rem] max-w-full" />
                     </div>
-                </div>
+                    <Skeleton className="mb-8 h-12 w-full rounded-xl" />
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {[0, 1, 2, 3, 4, 5].map(item => <Skeleton key={item} className="h-80 rounded-2xl" />)}
+                    </div>
+                    <span className="sr-only">Chargement des concours</span>
+                </main>
             </Layout>
         );
     }
@@ -208,8 +218,8 @@ const Concours = () => {
     if (error) {
         return (
             <Layout>
-                <div className="text-center py-12">
-                    <p className="text-red-500">Erreur lors du chargement des concours</p>
+                <div className="mx-auto max-w-2xl px-4 py-20">
+                    <ErrorMessage title="Concours indisponibles" message={error instanceof Error ? error.message : 'Le chargement a échoué. Vérifiez votre connexion puis réessayez.'} onRetry={() => void refetch()} />
                 </div>
             </Layout>
         );
@@ -217,10 +227,10 @@ const Concours = () => {
 
     return (
         <Layout>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-foreground mb-4">
-                        Concours Disponibles
+                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
+                        Concours disponibles
                     </h1>
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                         Découvrez les concours publics ouverts et postulez en quelques étapes simples
@@ -390,7 +400,7 @@ const Concours = () => {
                     )}
 
                     {/* Résultats */}
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground" aria-live="polite">
                         <p>
                             {filteredConcours.length} concours trouvé{filteredConcours.length > 1 ? 's' : ''}
                             {activeFiltersCount > 0 && ` (${activeFiltersCount} filtre${activeFiltersCount > 1 ? 's' : ''} actif${activeFiltersCount > 1 ? 's' : ''})`}
@@ -400,6 +410,7 @@ const Concours = () => {
                                 Page {currentPage} sur {totalPages}
                             </p>
                         )}
+                        {isFetching && <span className="inline-flex items-center gap-2"><RefreshCw className="h-3.5 w-3.5 animate-spin"/>Actualisation…</span>}
                     </div>
                 </div>
 
@@ -422,7 +433,7 @@ const Concours = () => {
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {paginatedConcours.map((concour: ConcoursType) => (
-                                <Card key={concour.id} className="hover:shadow-lg transition-shadow duration-200">
+                                <Card key={concour.id} className="group flex h-full flex-col overflow-hidden border-border/70 transition-all duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl">
                                     <CardHeader>
                                         <div className="flex justify-between items-start mb-2">
                                             <CardTitle className="text-lg font-bold line-clamp-2">
@@ -436,7 +447,7 @@ const Concours = () => {
                                         </div>
                                     </CardHeader>
 
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="flex flex-1 flex-col space-y-4">
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div className="flex items-center space-x-2">
                                                 <Calendar className="h-4 w-4 text-primary"/>
@@ -487,8 +498,8 @@ const Concours = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center space-x-2">
-                                            <div className="pt-4 border-t flex-1">
+                                        <div className="mt-auto flex flex-col gap-2 border-t pt-4 sm:flex-row">
+                                            <div className="flex-1">
                                                 <Button
                                                     onClick={() => handlePostuler(concour.id)}
                                                     className="w-full bg-primary hover:bg-primary/90"
@@ -497,7 +508,7 @@ const Concours = () => {
                                                     {concour.stacnc === '1' ? 'Postuler' : 'Fermé'}
                                                 </Button>
                                             </div>
-                                            <div className="pt-4 border-t flex-1">
+                                            <div className="flex-1">
                                                 <Button
                                                     onClick={() => voirPlus(concour.id)}
                                                     variant="outline"
@@ -567,7 +578,7 @@ const Concours = () => {
                         )}
                     </>
                 )}
-            </div>
+            </main>
         </Layout>
     );
 };

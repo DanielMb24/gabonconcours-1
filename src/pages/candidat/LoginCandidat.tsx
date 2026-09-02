@@ -34,8 +34,9 @@ const LoginCandidat = () => {
 
     try {
       // Valider le format NIPCAN (commence par NIP suivi de l'année et d'un numéro)
+      const normalizedNipcan = nipcan.trim().toUpperCase();
       const nipcanRegex = /^NIP\d{10}$/;
-      if (!nipcanRegex.test(nipcan.trim())) {
+      if (!nipcanRegex.test(normalizedNipcan)) {
         toast({
           title: "Format invalide",
           description: "Le NIPCAN doit commencer par NIP suivi de 10 chiffres (ex: NIP2026000001)",
@@ -46,7 +47,7 @@ const LoginCandidat = () => {
       }
 
       // Vérifier si le NIPCAN existe dans la base de données
-      const response = await apiService.verifyNipcan(nipcan.trim());
+      const response = await apiService.verifyNipcan(normalizedNipcan);
 
       if (!response.success) {
         toast({
@@ -59,7 +60,7 @@ const LoginCandidat = () => {
       }
 
       // Stocker le NIPCAN dans le localStorage pour persistance
-      localStorage.setItem('candidat_nipcan', nipcan.trim());
+      localStorage.setItem('candidat_nipcan', normalizedNipcan);
 
       const candidatData = response.data as { prenom?: string; nom?: string };
       toast({
@@ -68,7 +69,7 @@ const LoginCandidat = () => {
       });
 
       // Rediriger vers le dashboard
-      navigate(`/dashboard/${encodeURIComponent(nipcan.trim())}`);
+      navigate(`/dashboard/${encodeURIComponent(normalizedNipcan)}`);
 
     } catch (error) {
       console.error('Erreur de connexion:', error);
@@ -78,6 +79,7 @@ const LoginCandidat = () => {
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -85,7 +87,7 @@ const LoginCandidat = () => {
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex items-center justify-center py-12 px-4">
-        <div className="max-w-6xl w-full grid md:grid-cols-2 gap-12 items-center">
+        <div className="max-w-6xl w-full grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
           
           {/* === ILLUSTRATION & INFO (gauche) === */}
           <motion.div
@@ -138,7 +140,7 @@ const LoginCandidat = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="space-y-6"
           >
-            <Card className="shadow-2xl border-2 border-primary/10 bg-white/95 backdrop-blur">
+            <Card className="shadow-2xl border border-primary/15 bg-background/95 backdrop-blur">
               <CardHeader className="space-y-4 pb-8">
                 <div className="flex justify-center">
                   <motion.div
@@ -166,15 +168,22 @@ const LoginCandidat = () => {
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                       <Input
                         id="nipcan"
+                        name="nipcan"
                         type={showNipcan ? 'text' : 'password'}
                         value={nipcan}
-                        onChange={(e) => setNipcan(e.target.value)}
+                        onChange={(e) => setNipcan(e.target.value.toUpperCase().replace(/\s/g, ''))}
                         placeholder="Ex: NIP2026000001"
                         className="pl-10 pr-12 py-6 text-base font-mono tracking-wider"
                         disabled={isLoading}
+                        autoComplete="username"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        maxLength={13}
+                        required
                       />
                       <button
                         type="button"
+                        aria-label={showNipcan ? 'Masquer le NIPCAN' : 'Afficher le NIPCAN'}
                         onClick={() => setShowNipcan(!showNipcan)}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                         disabled={isLoading}
