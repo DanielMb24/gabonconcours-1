@@ -20,6 +20,7 @@ export type LegacyApiResponse<T = any> = ApiResponse<T> | T;
 // Instance axios pour la compatibilité
 export const api = axios.create({
     baseURL: API_BASE_URL,
+    timeout: 20000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -62,6 +63,7 @@ export class ApiService {
                 url: `${this.baseUrl}${url}`,
                 method,
                 data,
+                timeout: 20000,
                 headers: isFormData
                     ? {'Content-Type': 'multipart/form-data'}
                     : {
@@ -98,6 +100,7 @@ export class ApiService {
                 url: `${this.baseUrl}${url}`,
                 method,
                 data: formData,
+                timeout: 30000,
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
