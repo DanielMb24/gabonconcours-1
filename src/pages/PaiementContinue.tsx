@@ -284,7 +284,7 @@ const Paiement = () => {
                         <AlertTriangle className="h-5 w-5 text-amber-700"/>
                         <AlertDescription className="text-amber-900 space-y-3">
                             <p className="font-semibold">Paiement temporairement indisponible</p>
-                            <p>Téléversez la totalité des pièces obligatoires. Leur validation administrative aura lieu après le paiement.</p>
+                            <p>Téléversez la totalité des pièces obligatoires. Elles seront vérifiées par l’administration après le paiement.</p>
                             {paymentEligibility?.missing > 0 && <p>{paymentEligibility.missing} document(s) obligatoire(s) restant(s).</p>}
                             <Button onClick={() => navigate(`/documents/continue/${encodeURIComponent(numeroCandidature || '')}`)}>Compléter mes documents</Button>
                         </AlertDescription>
