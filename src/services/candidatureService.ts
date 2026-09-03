@@ -168,7 +168,14 @@ class CandidatureService {
 
         try {
             // Récupérer les données candidat
-            const candidatResponse = await apiService.getCandidatByNupcan(nupcan);
+            let candidatResponse = await apiService.getCandidatByNupcan(nupcan);
+            if (!candidatResponse.success) {
+                const nipcanResponse = await apiService.getCandidatByNip<any>(nupcan);
+                if (nipcanResponse.success && nipcanResponse.data) {
+                    candidatResponse = nipcanResponse;
+                    nupcan = nipcanResponse.data.nupcan;
+                }
+            }
             if (!candidatResponse.success) {
                 throw new Error('Candidat non trouvé');
             }
@@ -221,7 +228,7 @@ class CandidatureService {
             // Récupérer les documents (avec gestion d'erreur gracieuse)
             let documents: any[] = [];
             try {
-                const documentsResponse = await apiService.getDocumentsByNupcan(nupcan);
+                const documentsResponse = await apiService.getDocumentsByNupcan(candidatData.nupcan);
                 if (documentsResponse.success && documentsResponse.data) {
                     documents = Array.isArray(documentsResponse.data) ? documentsResponse.data : [];
                 }
@@ -233,7 +240,7 @@ class CandidatureService {
             // Récupérer le paiement (avec gestion d'erreur gracieuse)
             let paiement = null;
             try {
-                const paiementResponse = await apiService.getPaiementByNupcan(nupcan);
+                const paiementResponse = await apiService.getPaiementByNupcan(candidatData.nupcan);
                 if (paiementResponse.success && paiementResponse.data) {
                     paiement = paiementResponse.data;
                 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +94,15 @@ const DashboardNipcan: React.FC = () => {
     const [isLoadingNipcan, setIsLoadingNipcan] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
+    const { data: notificationsResponse } = useQuery({
+        queryKey: ['notifications', selectedCandidature],
+        queryFn: () => candidatePortalService.getNotifications(selectedCandidature as string),
+        enabled: Boolean(selectedCandidature),
+        refetchInterval: 10000,
+    });
+    const unreadNotifications = notificationsResponse?.success && Array.isArray(notificationsResponse.data)
+        ? notificationsResponse.data.filter((notification: { statut?: string }) => notification.statut === 'non_lu').length
+        : 0;
 
     useEffect(() => {
         const convertToNipcan = async () => {
@@ -837,7 +847,7 @@ const DashboardNipcan: React.FC = () => {
                 <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
                     <div className="flex w-full items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3"><Button variant="outline" size="icon" className="shrink-0" onClick={()=>{if(window.innerWidth>=1024)setDesktopMenuOpen(value=>!value);else setMobileMenuOpen(true);}} aria-label={desktopMenuOpen?'Replier le menu':'Ouvrir le menu'}><Menu className="h-5 w-5"/></Button><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{dashboardData.candidat.prncan} {dashboardData.candidat.nomcan}</p><p className="hidden truncate text-xs text-slate-500 sm:block">{dashboardData.candidat.nipcan}</p></div></div>
-                        <div className="flex items-center gap-1 sm:gap-2"><Button variant="ghost" size="icon" onClick={()=>setActiveTab('notifications')} disabled={!selectedCandidature} aria-label="Notifications"><Bell className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('profil')} aria-label="Profil"><User className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('settings')} aria-label="Paramètres"><Settings className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Déconnexion" className="text-red-600 hover:bg-red-50 hover:text-red-700"><LogOut className="h-5 w-5"/></Button></div>
+                        <div className="flex items-center gap-1 sm:gap-2"><Button variant="ghost" size="icon" className="relative" onClick={()=>setActiveTab('notifications')} disabled={!selectedCandidature} aria-label="Notifications"><Bell className="h-5 w-5"/>{unreadNotifications > 0 && <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-[10px]">{unreadNotifications > 9 ? '9+' : unreadNotifications}</Badge>}</Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('profil')} aria-label="Profil"><User className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={()=>setActiveTab('settings')} aria-label="Paramètres"><Settings className="h-5 w-5"/></Button><Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Déconnexion" className="text-red-600 hover:bg-red-50 hover:text-red-700"><LogOut className="h-5 w-5"/></Button></div>
                     </div>
                 </header>
                 <div className="w-full p-4 sm:p-5 lg:p-6">

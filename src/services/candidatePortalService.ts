@@ -19,6 +19,9 @@ export const candidatePortalService = {
   getNipcan<T>(nupcan: string): Promise<ApiResponse<T>> {
     return apiService.get<T>(candidatePortalRoutes.nipcanFromNupcan(nupcan));
   },
+  getNotifications<T>(nupcan: string): Promise<ApiResponse<T>> {
+    return apiService.get<T>(candidatePortalRoutes.notifications(nupcan));
+  },
   getMessages<T>(nupcan: string): Promise<ApiResponse<T>> {
     return apiService.get<T>(candidatePortalRoutes.messages(nupcan));
   },

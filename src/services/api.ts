@@ -294,7 +294,7 @@ export class ApiService {
     }
 
     async getCandidatByNip<T>(nip: string): Promise<ApiResponse<T>> {
-        return this.getCandidatByNupcan<T>(nip);
+        return this.getCandidatByNipcan<T>(nip);
     }
 
     async verifyNipcan<T>(nipcan: string): Promise<ApiResponse<T>> {
