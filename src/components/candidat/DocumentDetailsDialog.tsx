@@ -15,7 +15,7 @@ export default function DocumentDetailsDialog({ document, onClose, supplemental,
   if (!document) return null;
   const preview = documentService.getDocumentPreviewUrl(document.id);
   const save = async () => { if (!name.trim()) return; setSaving(true); try { await onRename(name.trim()); setEditing(false); } finally { setSaving(false); } };
-  return <Dialog open onOpenChange={open => !open && onClose()}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto rounded-md">
+  return <Dialog open onOpenChange={open => !open && onClose()}><DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto rounded-md">
     <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Détails du document</DialogTitle><DialogDescription>Consultez le fichier et ses informations techniques.</DialogDescription></DialogHeader>
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-h-[420px] overflow-hidden rounded-md border bg-muted/20"><iframe title={`Aperçu ${document.nomdoc}`} src={preview} className="h-[62vh] min-h-[420px] w-full" /></div>
