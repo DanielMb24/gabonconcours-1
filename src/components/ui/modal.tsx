@@ -12,7 +12,7 @@ export function Modal({ open, onOpenChange, children }: any) {
 
 export function ModalContent({ children }: any) {
     return (
-        <DialogContent className="fixed left-1/2 top-1/2 max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-4 shadow-lg focus:outline-none sm:p-6">
+        <DialogContent className="fixed left-1/2 top-1/2 max-h-[90vh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-3 shadow-lg focus:outline-none sm:p-4">
             {children}
         </DialogContent>
     );
