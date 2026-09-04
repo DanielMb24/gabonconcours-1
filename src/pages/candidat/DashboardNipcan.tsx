@@ -52,6 +52,8 @@ interface Candidature {
     progression: number;
     created_at: string;
     documents_count: number;
+    documents_requis?: number;
+    documents_deposes?: number;
     documents_valides: number;
     paiement_statut: string | null;
     etapes: {
@@ -366,7 +368,7 @@ const DashboardNipcan: React.FC = () => {
                                                     <div className="flex items-center gap-1 text-xs">
                                                         <FileText className="h-3 w-3 text-blue-600" />
                                                         <span className="text-gray-600">
-                                                            Documents: <span className="font-semibold text-blue-600">{candidature.documents_valides || 0}/{candidature.documents_count || 0}</span>
+                                                            Documents déposés: <span className="font-semibold text-blue-600">{candidature.documents_deposes || 0}/{candidature.documents_requis || 0}</span>
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1 text-xs">
