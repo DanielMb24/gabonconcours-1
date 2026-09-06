@@ -43,6 +43,8 @@ export interface ConcoursFormData {
         nom: string;
         obligatoire: boolean;
         description: string;
+        instructions_validation: string;
+        instructions_rejet: string;
     }>;
     
     // Étape 5: Critères de sélection
@@ -80,13 +82,13 @@ const STEPS = [
 const SERIES_BAC = ['Série A', 'Série C', 'Série D', 'Série G', 'Série E', 'Série F'];
 
 const DOCUMENTS_DEFAULT = [
-    { nom: 'Acte de naissance', obligatoire: true, description: 'Acte de naissance original ou copie certifiée' },
-    { nom: 'Certificat de nationalité', obligatoire: true, description: 'Certificat de nationalité gabonaise' },
-    { nom: 'Diplôme du Baccalauréat', obligatoire: true, description: 'Diplôme du Baccalauréat ou équivalent' },
-    { nom: 'Relevé de notes du Baccalauréat', obligatoire: true, description: 'Relevé de notes complet' },
-    { nom: 'Photo d\'identité', obligatoire: true, description: 'Photo d\'identité récente (format 4x4)' },
-    { nom: 'Certificat médical', obligatoire: true, description: 'Certificat médical de moins de 3 mois' },
-    { nom: 'Casier judiciaire', obligatoire: true, description: 'Bulletin n°3 du casier judiciaire' },
+    { nom: 'Acte de naissance', obligatoire: true, description: 'Acte de naissance original ou copie certifiée', instructions_validation: '', instructions_rejet: '' },
+    { nom: 'Certificat de nationalité', obligatoire: true, description: 'Certificat de nationalité gabonaise', instructions_validation: '', instructions_rejet: '' },
+    { nom: 'Diplôme du Baccalauréat', obligatoire: true, description: 'Diplôme du Baccalauréat ou équivalent', instructions_validation: '', instructions_rejet: '' },
+    { nom: 'Relevé de notes du Baccalauréat', obligatoire: true, description: 'Relevé de notes complet', instructions_validation: '', instructions_rejet: '' },
+    { nom: 'Photo d\'identité', obligatoire: true, description: 'Photo d\'identité récente (format 4x4)', instructions_validation: '', instructions_rejet: '' },
+    { nom: 'Certificat médical', obligatoire: true, description: 'Certificat médical de moins de 3 mois', instructions_validation: '', instructions_rejet: '' },
+    { nom: 'Casier judiciaire', obligatoire: true, description: 'Bulletin n°3 du casier judiciaire', instructions_validation: '', instructions_rejet: '' },
 ];
 
 interface CreateConcoursMultiStepProps {
@@ -157,7 +159,7 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
             debcnc: dateValue(initialData.debcnc), fincnc: dateValue(initialData.fincnc), agecnc: Number(initialData.agecnc ?? 35), fracnc: Number(initialData.fracnc ?? 0),
             nombre_places_total: Number(initialData.nombre_places_total ?? 0), duree_formation: initialData.duree_formation || '', diplome_delivre: initialData.diplome_delivre || '',
             date_publication_resultats: dateValue(initialData.date_publication_resultats), date_debut_cours: dateValue(initialData.date_debut_cours),
-            series_bac_acceptees: parseList(initialData.series_bac_acceptees), documents_requis: parseList(initialData.documents_requis).map((item: any) => ({ nom: item.nom || item.name || '', obligatoire: item.obligatoire !== false && item.required !== false, description: item.description || '' })),
+            series_bac_acceptees: parseList(initialData.series_bac_acceptees), documents_requis: parseList(initialData.documents_requis).map((item: any) => ({ nom: item.nom || item.name || '', obligatoire: item.obligatoire !== false && item.required !== false, description: item.description || '', instructions_validation: item.instructions_validation || item.validationInstructions || '', instructions_rejet: item.instructions_rejet || item.rejectionInstructions || '' })),
             criteres_selection: parseList(initialData.criteres_selection), modalites_inscription: parseList(initialData.modalites_inscription), conditions_eligibilite: parseList(initialData.conditions_eligibilite),
             contact_email: initialData.contact_email || '', contact_telephone: initialData.contact_telephone || '', lieu_examen: initialData.lieu_examen || '', informations_complementaires: initialData.informations_complementaires || '',
         } : {})
@@ -672,6 +674,16 @@ const Step4Documents: React.FC<{
                                     placeholder="Description"
                                     value={doc.description}
                                     onChange={(e) => updateDocument(index, 'description', e.target.value)}
+                                />
+                                <Textarea
+                                    placeholder="Consignes IA pour valider (ex. nom, date et numéro lisibles)"
+                                    value={doc.instructions_validation}
+                                    onChange={(e) => updateDocument(index, 'instructions_validation', e.target.value)}
+                                />
+                                <Textarea
+                                    placeholder="Consignes IA pour rejeter (ex. document flou, expiré ou incomplet)"
+                                    value={doc.instructions_rejet}
+                                    onChange={(e) => updateDocument(index, 'instructions_rejet', e.target.value)}
                                 />
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
