@@ -19,7 +19,8 @@ import {
     X,
     Archive,
     MessageSquare,
-    UserCircle
+    UserCircle,
+    BrainCircuit
 } from 'lucide-react';
 import {useAdminAuth} from '@/contexts/AdminAuthContext';
 import NotificationBadge from '@/components/admin/NotificationBadge';
@@ -68,6 +69,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                 { path: '/admin/concours', label: 'Concours', icon: Trophy },
                 { path: '/admin/candidats', label: 'Candidatures', icon: Users },
                 { path: '/admin/dossiers', label: 'Documents', icon: FileText },
+                { path: '/admin/configuration-ia', label: 'Configuration IA', icon: BrainCircuit },
                 { path: '/admin/paiements', label: 'Paiements', icon: DollarSign },
                 { path: '/admin/messagerie', label: 'Messages', icon: MessageSquare },
                 { path: '/admin/notes', label: 'Notes', icon: GraduationCap },
@@ -83,6 +85,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
             if (['applications_manager', 'grades_entry', 'grades_validator'].includes(role)) items.push({ path: '/admin/concours', label: 'Concours', icon: GraduationCap });
             if (role === 'applications_manager') items.push({ path: '/admin/candidats', label: 'Candidatures', icon: Users });
             if (['applications_manager', 'documents_validator', 'documents_viewer'].includes(role)) items.push({ path: '/admin/dossiers', label: 'Documents', icon: FileText });
+            if (['applications_manager', 'documents_validator'].includes(role)) items.push({ path: '/admin/configuration-ia', label: 'Configuration IA', icon: BrainCircuit });
             if (role === 'grades_entry' || role === 'grades_validator') items.push({ path: '/admin/notes', label: 'Notes', icon: GraduationCap });
             if (role === 'reports_viewer') items.push({ path: '/admin/archives', label: 'Archives', icon: Archive });
             if (role === 'payments_viewer') items.push({ path: '/admin/paiements', label: 'Paiements', icon: DollarSign });

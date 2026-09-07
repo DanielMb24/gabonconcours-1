@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
     ChevronLeft, ChevronRight, Check, FileText, Users, Calendar, 
-    Target, Info, Plus, X, School, Award, BrainCircuit 
+    Target, Info, Plus, X, School, Award 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
@@ -686,15 +686,6 @@ const Step4Documents: React.FC<{
                                     value={doc.description}
                                     onChange={(e) => updateDocument(index, 'description', e.target.value)}
                                 />
-                                <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3">
-                                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-900">
-                                        <BrainCircuit className="h-4 w-4" />
-                                        Contrôle automatique IA
-                                    </div>
-                                    <p className="mb-3 text-xs text-blue-800">
-                                        Après le téléversement, l'IA appliquera ces règles et recommandera la validation, le rejet ou une vérification humaine.
-                                    </p>
-                                    <div className="space-y-3">
                                 <Textarea
                                     placeholder="Consignes IA pour valider (ex. nom, date et numéro lisibles)"
                                     value={doc.instructions_validation}
@@ -705,8 +696,6 @@ const Step4Documents: React.FC<{
                                     value={doc.instructions_rejet}
                                     onChange={(e) => updateDocument(index, 'instructions_rejet', e.target.value)}
                                 />
-                                    </div>
-                                </div>
                                 <div className="rounded-md border border-dashed p-3">
                                     <Label className="text-sm">Document exemple pour l’IA</Label>
                                     <p className="mb-2 text-xs text-muted-foreground">PDF ou image de référence pour comparer la structure et les éléments attendus. Il ne sert pas à prouver l’authenticité.</p>

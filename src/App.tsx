@@ -66,6 +66,7 @@ import MessagerieAdminPage from './pages/admin/MessagerieAdminPage';
 import MatieresManagementPage from './pages/admin/MatieresManagementPage';
 import APropos from './pages/APropos';
 import Archives from './pages/admin/Archives';
+import ConfigurationIA from '@/pages/admin/ConfigurationIA';
 
 
 const queryClient = new QueryClient({
@@ -151,6 +152,7 @@ function App() {
                             <Route path="candidats/:nupcan" element={<CandidateManagement/>}/>
                             <Route path="etablissements" element={<AdminEtablissements/>}/>
                             <Route path="dossiers" element={<AdminDossiers/>}/>
+                            <Route path="configuration-ia" element={<ConfigurationIA/>}/>
                             <Route path="paiements" element={<AdminPaiements/>}/>
                             <Route path="niveaux" element={<GestionNiveaux/>}/>
                             <Route path="filieres" element={<GestionFilieres/>}/>
