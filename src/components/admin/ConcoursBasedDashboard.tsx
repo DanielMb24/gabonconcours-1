@@ -267,6 +267,7 @@
 
 
 import React, {useState, useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
 import {adminConcoursService} from '@/services/adminConcoursService';
 import {adminCandidatureService} from '@/services/adminCandidatureService';
@@ -279,7 +280,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {Button} from '@/components/ui/button';
-import {ArrowLeft, Pencil, LockKeyhole} from 'lucide-react';
+import {ArrowLeft, Pencil, LockKeyhole, BrainCircuit} from 'lucide-react';
 import CandidatesList from './CandidatesList';
 import AdminNavigation from "@/components/admin/AdminNavigation.tsx";
 import CreateConcoursMultiStep from '@/components/admin/CreateConcoursMultiStep';
@@ -313,6 +314,7 @@ const ConcoursCard: React.FC<ConcoursCardProps> = ({concours, onSelect, onEdit})
 
 const ConcoursBasedDashboard = () => {
     const {admin, token, isLoading} = useAdminAuth();
+    const navigate = useNavigate();
     const [selectedConcours, setSelectedConcours] = useState<string | number | null>(null);
     const [editingConcours, setEditingConcours] = useState<any | null>(null);
 
@@ -446,7 +448,8 @@ const ConcoursBasedDashboard = () => {
         <div className="space-y-6">
 
             {/* En-tête avec retour */}
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center space-x-4">
                 <Button
                     variant="ghost"
                     onClick={() => setSelectedConcours(null)} 
@@ -460,6 +463,11 @@ const ConcoursBasedDashboard = () => {
                         Session {concoursSelectionne?.sescnc}
                     </p>
                 </div>
+                </div>
+                <Button variant="outline" onClick={() => navigate(`/admin/configuration-ia?concours=${selectedConcours}`)}>
+                    <BrainCircuit className="h-4 w-4 mr-2" />
+                    Configurer l'IA des documents
+                </Button>
             </div>
 
             {/* Statistiques */}
