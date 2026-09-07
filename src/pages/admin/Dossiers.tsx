@@ -11,7 +11,6 @@ import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
 import {toast} from '@/hooks/use-toast';
 import {API_ORIGIN, apiService} from '@/services/api';
 import DocumentValidationModal from '@/components/admin/DocumentValidationModal';
-import DocumentViewer from "@/components/DocumentViewer.tsx";
 import DocumentVisualization from "@/components/DocumentVisualization.tsx";
 
 const Dossiers = () => {
@@ -274,15 +273,21 @@ const Dossiers = () => {
                     </Card>
                 </div>
 
-                {/* Modal de validation */}
-                <DocumentViewer
+                {/* Modal de validation avec assistance IA */}
+                <DocumentValidationModal
                     document={selectedDocument}
                     isOpen={isValidationModalOpen}
                     onClose={() => {
                         setIsValidationModalOpen(false);
                         setSelectedDocument(null);
                     }}
-
+                    onValidate={handleValidateDocument}
+                    isValidating={validateDocumentMutation.isPending}
+                    candidatInfo={selectedDocument ? {
+                        nomcan: selectedDocument.nomcan,
+                        prncan: selectedDocument.prncan,
+                        maican: selectedDocument.maican,
+                    } : undefined}
                 />
             </AdminLayout>
         </AdminProtectedRoute>
