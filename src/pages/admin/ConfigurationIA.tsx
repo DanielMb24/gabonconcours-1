@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { BrainCircuit, Save } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -10,14 +11,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { apiService } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 type Requirement = { id: string; nom: string; description?: string; instructions_validation?: string; instructions_rejet?: string; obligatoire?: boolean };
 type Contest = { id: string; libcnc: string };
 
 const ConfigurationIA = () => {
-  const [contestId, setContestId] = useState('');
+  const [searchParams] = useSearchParams();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const [contestId, setContestId] = useState(searchParams.get('concours') || '');
   const [requirements, setRequirements] = useState<Requirement[]>([]);
-  const contestsQuery = useQuery({ queryKey: ['ai-contests'], queryFn: () => apiService.getConcours<Contest[]>() });
+  const establishmentId = admin?.etablissement_id || admin?.etablissement_object_id;
+  const contestsQuery = useQuery({
+    queryKey: ['ai-contests', establishmentId, isSuperAdmin],
+    enabled: isSuperAdmin || Boolean(establishmentId),
+    queryFn: async () => isSuperAdmin
+      ? apiService.getConcours<Contest[]>()
+      : apiService.makeRequest<Contest[]>(`/admin/etablissement/${establishmentId}/concours`, 'GET')
+  });
   const requirementsQuery = useQuery({ queryKey: ['ai-requirements', contestId], enabled: Boolean(contestId), queryFn: async () => (await apiService.makeRequest(`/concours/${contestId}`, 'GET')).data });
 
   useEffect(() => {

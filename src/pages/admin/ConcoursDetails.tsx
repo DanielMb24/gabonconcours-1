@@ -16,7 +16,8 @@ import {
     Filter,
     CheckCircle,
     XCircle,
-    Clock
+    Clock,
+    BrainCircuit
 } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
@@ -178,10 +179,16 @@ const ConcoursDetails: React.FC = () => {
                         </p>
                     </div>
                 </div>
+                <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => navigate(`/admin/configuration-ia?concours=${id}`)}>
+                    <BrainCircuit className="h-4 w-4 mr-2" />
+                    Configurer l'IA des documents
+                </Button>
                 <Button onClick={handleExportExcel}>
                     <Download className="h-4 w-4 mr-2" />
                     Exporter Excel
                 </Button>
+                </div>
             </div>
 
             {/* Statistiques */}
