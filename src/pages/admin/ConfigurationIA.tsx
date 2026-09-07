@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { BrainCircuit, FileUp, MessageCircle, Save, Send, Trash2 } from 'lucide-react';
@@ -25,6 +25,40 @@ const ConfigurationIA = () => {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const stopAnalysis = useRef(false);
+  const analysisActive = useRef(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState({ completed: 0, failed: 0, skipped: 0 });
+  const [analysisMessage, setAnalysisMessage] = useState('');
+  useEffect(() => () => { stopAnalysis.current = true; }, []);
+  const runExistingDocuments = async () => {
+    if (analysisActive.current || !contestId) return;
+    analysisActive.current = true;
+    stopAnalysis.current = false;
+    setAnalyzing(true);
+    setAnalysisProgress({ completed: 0, failed: 0, skipped: 0 });
+    setAnalysisMessage('Analyse en cours. Gardez cette page ouverte.');
+    let after: string | undefined;
+    let before: string | undefined;
+    try {
+      while (!stopAnalysis.current) {
+        const response = await apiService.makeRequest<{ done: boolean; cursor?: string; before: string; outcome?: 'completed' | 'failed' | 'skipped' }>(
+          '/admin/ai/backfill', 'POST', { contestId, after, before }, { timeout: 130000 }
+        );
+        if (!response.success || !response.data) throw new Error(response.message || 'Analyse indisponible');
+        const result = response.data;
+        if (result.done) { setAnalysisMessage('Traitement terminé. Les éventuels échecs peuvent être relancés.'); break; }
+        if (!result.cursor || result.cursor === after) throw new Error('La progression est interrompue. Relancez le traitement.');
+        after = result.cursor;
+        before = result.before;
+        const outcome = result.outcome || 'skipped';
+        setAnalysisProgress(current => ({ ...current, [outcome]: current[outcome] + 1 }));
+      }
+      if (stopAnalysis.current) setAnalysisMessage('Traitement arrêté. Vous pouvez reprendre les documents restants.');
+    } catch (error: any) {
+      setAnalysisMessage(error.message || 'Traitement interrompu. Vous pouvez le reprendre.');
+    } finally { analysisActive.current = false; setAnalyzing(false); }
+  };
   const establishmentId = admin?.etablissement_id || admin?.etablissement_object_id;
 
   const contestsQuery = useQuery({
@@ -82,7 +116,13 @@ const ConfigurationIA = () => {
 
   return <AdminProtectedRoute><AdminLayout><div className="mx-auto max-w-6xl space-y-6">
     <div className="flex items-start gap-3"><BrainCircuit className="mt-1 h-8 w-8 text-blue-600" /><div><h1 className="text-3xl font-bold">Configuration IA</h1><p className="text-muted-foreground">Règles, documents modèles et assistant de configuration par concours.</p></div></div>
-    <Card><CardHeader><CardTitle>Concours concerné</CardTitle></CardHeader><CardContent><Select value={contestId} onValueChange={setContestId}><SelectTrigger><SelectValue placeholder="Sélectionner un concours" /></SelectTrigger><SelectContent>{contests.map(contest => <SelectItem key={contest.id} value={String(contest.id)}>{contest.libcnc}</SelectItem>)}</SelectContent></Select></CardContent></Card>
+    <Card><CardHeader><CardTitle>Concours concerné</CardTitle></CardHeader><CardContent><Select disabled={analyzing} value={contestId} onValueChange={setContestId}><SelectTrigger><SelectValue placeholder="Sélectionner un concours" /></SelectTrigger><SelectContent>{contests.map(contest => <SelectItem key={contest.id} value={String(contest.id)}>{contest.libcnc}</SelectItem>)}</SelectContent></Select></CardContent></Card>
+    {contestId && <Card><CardHeader><CardTitle>Analyser les anciens téléversements</CardTitle></CardHeader><CardContent className="space-y-3">
+      <p className="text-sm text-muted-foreground">Traite automatiquement les documents en attente, sans analyse ou en échec avec les règles enregistrées. Les documents déjà validés, rejetés ou analysés sont conservés. Gardez cette page ouverte pendant le traitement.</p>
+      <div className="flex gap-2"><Button disabled={analyzing || saveMutation.isPending} onClick={() => void runExistingDocuments()}>{analyzing ? 'Analyse en cours…' : 'Analyser les anciens documents'}</Button>
+      {analyzing && <Button variant="outline" onClick={() => { stopAnalysis.current = true; setAnalysisMessage('Arrêt après le document en cours…'); }}>Arrêter</Button>}</div>
+      <p role="status" aria-live="polite" className="text-sm">{analysisMessage} {analysisProgress.completed} analysé(s), {analysisProgress.failed} en échec, {analysisProgress.skipped} ignoré(s).</p>
+    </CardContent></Card>}
     {contestId && requirementsQuery.isLoading && <p>Chargement des documents...</p>}
     {contestId && !requirementsQuery.isLoading && <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-semibold">Documents contrôlés</h2><p className="text-sm text-muted-foreground">L’IA analysera chaque téléversement selon ces règles et le modèle fourni.</p></div><Button disabled={!requirements.length || saveMutation.isPending} onClick={() => saveMutation.mutate()}><Save className="mr-2 h-4 w-4" />Enregistrer</Button></div>
