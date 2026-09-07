@@ -62,7 +62,11 @@ const ConfigurationIA = () => {
     onSuccess: () => void requirementsQuery.refetch()
   });
   const chatMutation = useMutation({
-    mutationFn: () => apiService.makeRequest<{ answer: string }>('/admin/ai/chat', 'POST', { contestId, message: chatInput, history: chatMessages, requirements }),
+    mutationFn: async () => {
+      const response = await apiService.makeRequest<{ answer: string }>('/admin/ai/chat', 'POST', { contestId, message: chatInput, history: chatMessages, requirements });
+      if (!response.success) throw new Error(response.message || 'Le service IA est indisponible.');
+      return response;
+    },
     onSuccess: response => { setChatMessages(current => [...current, { role: 'assistant', content: response.data?.answer || response.message || 'Aucune réponse.' }]); setChatInput(''); },
     onError: (error: any) => toast({ title: 'Chat IA indisponible', description: error.message || 'Configurez OPENAI_API_KEY côté backend.', variant: 'destructive' })
   });
