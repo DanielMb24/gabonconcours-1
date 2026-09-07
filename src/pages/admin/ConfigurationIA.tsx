@@ -68,7 +68,7 @@ const ConfigurationIA = () => {
       return response;
     },
     onSuccess: response => { setChatMessages(current => [...current, { role: 'assistant', content: response.data?.answer || response.message || 'Aucune réponse.' }]); setChatInput(''); },
-    onError: (error: any) => toast({ title: 'Chat IA indisponible', description: error.message || 'Configurez OPENAI_API_KEY côté backend.', variant: 'destructive' })
+    onError: (error: any) => toast({ title: 'Chat IA indisponible', description: error.message || 'Le service Gemini est indisponible. Contactez l’administrateur.', variant: 'destructive' })
   });
 
   const contests = Array.isArray(contestsQuery.data?.data) ? contestsQuery.data.data : [];
