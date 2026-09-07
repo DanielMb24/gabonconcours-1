@@ -45,6 +45,8 @@ export interface ConcoursFormData {
         description: string;
         instructions_validation: string;
         instructions_rejet: string;
+        exemple_fichier?: File;
+        exemple_nom?: string;
     }>;
     
     // Étape 5: Critères de sélection
@@ -159,7 +161,7 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
             debcnc: dateValue(initialData.debcnc), fincnc: dateValue(initialData.fincnc), agecnc: Number(initialData.agecnc ?? 35), fracnc: Number(initialData.fracnc ?? 0),
             nombre_places_total: Number(initialData.nombre_places_total ?? 0), duree_formation: initialData.duree_formation || '', diplome_delivre: initialData.diplome_delivre || '',
             date_publication_resultats: dateValue(initialData.date_publication_resultats), date_debut_cours: dateValue(initialData.date_debut_cours),
-            series_bac_acceptees: parseList(initialData.series_bac_acceptees), documents_requis: parseList(initialData.documents_requis).map((item: any) => ({ nom: item.nom || item.name || '', obligatoire: item.obligatoire !== false && item.required !== false, description: item.description || '', instructions_validation: item.instructions_validation || item.validationInstructions || '', instructions_rejet: item.instructions_rejet || item.rejectionInstructions || '' })),
+            series_bac_acceptees: parseList(initialData.series_bac_acceptees), documents_requis: parseList(initialData.documents_requis).map((item: any) => ({ nom: item.nom || item.name || '', obligatoire: item.obligatoire !== false && item.required !== false, description: item.description || '', instructions_validation: item.instructions_validation || item.validationInstructions || '', instructions_rejet: item.instructions_rejet || item.rejectionInstructions || '', exemple_nom: item.exemple_document?.nom_fichier || '' })),
             criteres_selection: parseList(initialData.criteres_selection), modalites_inscription: parseList(initialData.modalites_inscription), conditions_eligibilite: parseList(initialData.conditions_eligibilite),
             contact_email: initialData.contact_email || '', contact_telephone: initialData.contact_telephone || '', lieu_examen: initialData.lieu_examen || '', informations_complementaires: initialData.informations_complementaires || '',
         } : {})
@@ -198,7 +200,7 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
                 ...formData,
                 stacnc: '1', // Ouvert par défaut
                 series_bac_acceptees: isPremiereAnnee ? JSON.stringify(formData.series_bac_acceptees) : null,
-                documents_requis: configuredDocuments,
+                documents_requis: configuredDocuments.map(({ exemple_fichier, exemple_nom, ...document }) => document),
                 criteres_selection: JSON.stringify(formData.criteres_selection),
                 modalites_inscription: JSON.stringify(formData.modalites_inscription),
                 conditions_eligibilite: JSON.stringify(formData.conditions_eligibilite),
@@ -208,6 +210,14 @@ export const CreateConcoursMultiStep: React.FC<CreateConcoursMultiStepProps> = (
             if (isEdit && !concoursId) throw new Error('Identifiant du concours manquant');
             const response = await apiService.makeRequest(isEdit ? `/concours/${concoursId}` : '/concours', isEdit ? 'PUT' : 'POST', payload);
             if (!response.success) throw new Error(response.message || (isEdit ? 'Modification du concours impossible' : 'Création du concours impossible'));
+            const savedDocuments = response.data?.documents_requis || [];
+            await Promise.all(configuredDocuments.map(async (document, index) => {
+                if (!document.exemple_fichier || !savedDocuments[index]?.id) return;
+                const example = new FormData();
+                example.append('example', document.exemple_fichier);
+                const uploadResponse = await apiService.makeFormDataRequest(`/document-requirements/${savedDocuments[index].id}/example`, 'PUT', example);
+                if (!uploadResponse.success) throw new Error(uploadResponse.message || `Impossible d'enregistrer l'exemple de ${document.nom}`);
+            }));
             
             toast({
                 title: 'Succès',
@@ -685,6 +695,17 @@ const Step4Documents: React.FC<{
                                     value={doc.instructions_rejet}
                                     onChange={(e) => updateDocument(index, 'instructions_rejet', e.target.value)}
                                 />
+                                <div className="rounded-md border border-dashed p-3">
+                                    <Label className="text-sm">Document exemple pour l’IA</Label>
+                                    <p className="mb-2 text-xs text-muted-foreground">PDF ou image de référence pour comparer la structure et les éléments attendus. Il ne sert pas à prouver l’authenticité.</p>
+                                    <Input
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                        onChange={(e) => updateDocument(index, 'exemple_fichier', e.target.files?.[0])}
+                                    />
+                                    {doc.exemple_fichier?.name && <p className="mt-1 text-xs text-blue-700">Nouveau modèle : {doc.exemple_fichier.name}</p>}
+                                    {!doc.exemple_fichier && doc.exemple_nom && <p className="mt-1 text-xs text-muted-foreground">Modèle actuel : {doc.exemple_nom}</p>}
+                                </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
                                         checked={doc.obligatoire}
