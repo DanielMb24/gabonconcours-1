@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
     ChevronLeft, ChevronRight, Check, FileText, Users, Calendar, 
-    Target, Info, Plus, X, School, Award 
+    Target, Info, Plus, X, School, Award, BrainCircuit 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
@@ -640,9 +640,10 @@ const Step4Documents: React.FC<{
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">
-                    Documents requis pour l'inscription
-                </p>
+                <div>
+                    <p className="text-sm font-semibold text-foreground">Documents requis pour l'inscription</p>
+                    <p className="text-xs text-muted-foreground">Définissez les règles utilisées par l'IA après chaque téléversement.</p>
+                </div>
                 <Button type="button" variant="outline" size="sm" onClick={addDocument}>
                     <Plus className="h-4 w-4 mr-2" />
                     Ajouter
@@ -675,6 +676,15 @@ const Step4Documents: React.FC<{
                                     value={doc.description}
                                     onChange={(e) => updateDocument(index, 'description', e.target.value)}
                                 />
+                                <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3">
+                                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-900">
+                                        <BrainCircuit className="h-4 w-4" />
+                                        Contrôle automatique IA
+                                    </div>
+                                    <p className="mb-3 text-xs text-blue-800">
+                                        Après le téléversement, l'IA appliquera ces règles et recommandera automatiquement la validation, le rejet ou une vérification humaine.
+                                    </p>
+                                    <div className="space-y-3">
                                 <Textarea
                                     placeholder="Consignes IA pour valider (ex. nom lisible, date de validité, mentions obligatoires)"
                                     value={doc.ia_indications_validation}
@@ -685,6 +695,8 @@ const Step4Documents: React.FC<{
                                     value={doc.ia_indications_rejet}
                                     onChange={(e) => updateDocument(index, 'ia_indications_rejet', e.target.value)}
                                 />
+                                    </div>
+                                </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
                                         checked={doc.obligatoire}
