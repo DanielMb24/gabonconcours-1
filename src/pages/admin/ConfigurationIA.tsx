@@ -63,7 +63,7 @@ const ConfigurationIA = () => {
   });
   const chatMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiService.makeRequest<{ answer: string }>('/admin/ai/chat', 'POST', { contestId, message: chatInput, history: chatMessages, requirements });
+      const response = await apiService.makeRequest<{ answer: string }>('/admin/ai/chat', 'POST', { contestId, message: chatInput, history: chatMessages, requirements }, { timeout: 130000 });
       if (!response.success) throw new Error(response.message || 'Le service IA est indisponible.');
       return response;
     },

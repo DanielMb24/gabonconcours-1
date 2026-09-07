@@ -55,7 +55,7 @@ export class ApiService {
         delete api.defaults.headers.Authorization;
     }
 
-    async makeRequest<T>(url: string, method: string, data?: any): Promise<ApiResponse<T>> {
+    async makeRequest<T>(url: string, method: string, data?: any, options?: { timeout?: number }): Promise<ApiResponse<T>> {
         try {
             const isFormData = data instanceof FormData;
 
@@ -63,7 +63,7 @@ export class ApiService {
                 url: `${this.baseUrl}${url}`,
                 method,
                 data,
-                timeout: 20000,
+                timeout: options?.timeout ?? 20000,
                 headers: isFormData
                     ? {'Content-Type': 'multipart/form-data'}
                     : {
@@ -86,7 +86,9 @@ export class ApiService {
 
             return {
                 success: false,
-                message: 'Erreur inconnue lors de la requête',
+                message: error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
+                    ? 'Le délai de réponse est dépassé. Veuillez réessayer.'
+                    : 'Erreur inconnue lors de la requête',
                 errors: [error.message],
             };
         }
