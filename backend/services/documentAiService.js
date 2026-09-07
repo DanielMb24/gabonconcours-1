@@ -1,6 +1,6 @@
 const axios = require('axios');
 const env = require('../config/env');
-const { ApplicationDocument, DocumentRequirement } = require('../models/mongo');
+const { ApplicationDocument, DocumentRequirement, Application, Administrator, Notification } = require('../models/mongo');
 
 const parseDataUrl = value => {
   const match = /^data:([^;]+);base64,(.+)$/.exec(value || '');
@@ -22,7 +22,10 @@ async function analyzeDocument(documentId) {
 
   const document = await ApplicationDocument.findById(documentId).lean();
   if (!document) return;
-  const requirement = document.requirementId ? await DocumentRequirement.findById(document.requirementId).lean() : null;
+  const [requirement, application] = await Promise.all([
+    document.requirementId ? DocumentRequirement.findById(document.requirementId).lean() : null,
+    Application.findById(document.applicationId).populate('contestId').lean()
+  ]);
   const data = parseDataUrl(document.contentData);
   if (!data) throw new Error('Contenu du document indisponible');
 
@@ -45,7 +48,59 @@ async function analyzeDocument(documentId) {
     const result = extractJson(response.data?.choices?.[0]?.message?.content);
     const recommendation = ['approve', 'reject', 'review'].includes(result.recommendation) ? result.recommendation : 'review';
     const confidence = Math.min(1, Math.max(0, Number(result.confidence) || 0));
-    await ApplicationDocument.findByIdAndUpdate(documentId, { $set: { aiStatus: 'completed', aiRecommendation: recommendation, aiConfidence: confidence, aiReason: String(result.reason || 'Verification administrative requise').slice(0, 500), aiAnalyzedAt: new Date() } });
+    const reason = String(result.reason || 'Verification administrative requise').slice(0, 500);
+    const automaticStatus = recommendation === 'approve' ? 'approved' : recommendation === 'reject' ? 'rejected' : 'uploaded';
+    const update = {
+      aiStatus: 'completed',
+      aiRecommendation: recommendation,
+      aiConfidence: confidence,
+      aiReason: reason,
+      aiAnalyzedAt: new Date(),
+      status: automaticStatus,
+      ...(automaticStatus === 'rejected' ? { rejectionReason: `Rejet automatique IA : ${reason}` } : { rejectionReason: undefined })
+    };
+    const savedDocument = await ApplicationDocument.findByIdAndUpdate(documentId, { $set: update }, { new: true }).lean();
+    if (!application || !savedDocument) return;
+
+    try {
+      const documentLabel = document.type || document.originalName || 'document';
+      const candidateBody = recommendation === 'approve'
+        ? `Votre document « ${documentLabel} » a été validé automatiquement après contrôle IA.`
+        : recommendation === 'reject'
+          ? `Votre document « ${documentLabel} » a été rejeté automatiquement. Motif : ${reason}`
+          : `Votre document « ${documentLabel} » a été analysé. Une vérification humaine est requise.`;
+      await Notification.create({
+        candidateId: application.candidateId,
+        applicationId: application._id,
+        legacyNupcan: application.nupcan,
+        title: recommendation === 'approve' ? 'Document validé automatiquement' : recommendation === 'reject' ? 'Document rejeté automatiquement' : 'Vérification humaine requise',
+        body: candidateBody,
+        channel: 'in_app'
+      });
+
+      const establishmentId = application.contestId?.establishmentId;
+      if (establishmentId) {
+        const administrators = await Administrator.find({
+          active: true,
+          $and: [
+            { $or: [{ role: 'super_admin' }, { establishmentIds: establishmentId }] },
+            { $or: [{ permissions: 'view_documents' }, { permissions: 'validate_documents' }, { role: { $in: ['super_admin', 'admin', 'admin_etablissement', 'reviewer'] } }] }
+          ]
+        }).select('_id').lean();
+        if (administrators.length) {
+          await Notification.insertMany(administrators.map(admin => ({
+            recipientAdministratorId: admin._id,
+            applicationId: application._id,
+            legacyNupcan: application.nupcan,
+            title: 'Rapport de contrôle IA disponible',
+            body: `${documentLabel} : ${recommendation === 'approve' ? 'validé automatiquement' : recommendation === 'reject' ? 'rejeté automatiquement' : 'à vérifier manuellement'} (${Math.round(confidence * 100)} %). ${reason}`,
+            channel: 'in_app'
+          })));
+        }
+      }
+    } catch (notificationError) {
+      console.error(JSON.stringify({ level: 'error', code: 'DOCUMENT_AI_NOTIFICATION_FAILED', documentId: String(documentId), message: notificationError.message }));
+    }
   } catch (error) {
     await ApplicationDocument.findByIdAndUpdate(documentId, { $set: { aiStatus: 'failed', aiError: String(error.response?.data?.error?.message || error.message).slice(0, 500), aiAnalyzedAt: new Date() } });
     throw error;
