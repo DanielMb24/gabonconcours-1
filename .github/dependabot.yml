@@ -1,50 +1,15 @@
-version: 2
+# Frontend
+cd /home/devgroup-africa/projects/projets-internes/devgroup-concours/frontend
+mkdir -p .github/workflows
+# Créer ci-frontend.yml
+git add .github/
+git commit -m "CI: Ajouter workflow frontend DevGroup"
+git push
 
-updates:
-  # ============================================
-  # NPM : Mises à jour des dépendances
-  # ============================================
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-      time: "03:00"
-    open-pull-requests-limit: 10
-    pull-request-branch-name:
-      separator: "/"
-    reviewers:
-      - DanielMb24
-    labels:
-      - "🔧 dependencies"
-      - "📦 npm"
-
-  # ============================================
-  # GitHub Actions : Mises à jour des actions
-  # ============================================
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-      time: "04:00"
-    open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
-    labels:
-      - "🤖 github-actions"
-
-  # ============================================
-  # Docker : Mises à jour des images
-  # ============================================
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:00"
-    open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
-    labels:
-      - "🐳 docker"
+# Backend
+cd /home/devgroup-africa/projects/projets-internes/devgroup-concours/api
+mkdir -p .github/workflows
+# Créer ci-backend.yml
+git add .github/
+git commit -m "CI: Ajouter workflow backend DevGroup"
+git push
