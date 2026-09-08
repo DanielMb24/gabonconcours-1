@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useParams, useNavigate} from 'react-router-dom';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
@@ -9,6 +9,9 @@ import {useCandidature} from '@/hooks/useCandidature';
 const Confirmation = () => {
     const {numeroCandidature} = useParams<{ numeroCandidature: string }>();
     const navigate = useNavigate();
+    const [credentials, setCredentials] = useState(() => {
+        try {const value = JSON.parse(sessionStorage.getItem('candidate_initial_credentials') || 'null'); return value?.nupcan === numeroCandidature ? value : null;} catch {return null;}
+    });
     const {candidatureData, isLoading, error, loadCandidature} = useCandidature();
 
     useEffect(() => {
@@ -60,6 +63,7 @@ const Confirmation = () => {
     return (
         <Layout>
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {credentials && <Card className="mb-6 border-blue-300 bg-blue-50"><CardContent className="space-y-3 pt-6"><h2 className="text-xl font-bold">Votre compte étudiant est créé</h2><p>Nom d’utilisateur : <strong>{credentials.username}</strong></p><p>Mot de passe temporaire : <code className="select-all rounded bg-white p-2 font-bold">{credentials.temporaryPassword}</code></p><p className="text-sm">Conservez-le. Vous pourrez le modifier dans les paramètres de votre espace candidat. {credentials.emailSent ? "Ces identifiants ont également été envoyés par email." : "L’email n’a pas pu être envoyé : conservez les identifiants affichés ici."}</p><Button variant="outline" onClick={() => {sessionStorage.removeItem('candidate_initial_credentials'); setCredentials(null);}}>J’ai conservé mes identifiants</Button></CardContent></Card>}
                 {/* En-tête de succès centré */}
                 <div className="text-center mb-10">
                     <div

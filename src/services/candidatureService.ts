@@ -83,7 +83,13 @@ class CandidatureService {
                 }
                 throw new Error(candidatResponse.message || `Impossible de créer la candidature (${response.status})`);
             }
-            console.log('✅ Candidat créé:', candidatResponse);
+            const account = candidatResponse.data?.account;
+            if (account) {
+                localStorage.setItem('candidate_token', account.token);
+                localStorage.setItem('candidat_nipcan', account.nipcan);
+                sessionStorage.setItem('candidate_initial_credentials', JSON.stringify({nupcan: candidatResponse.data.nupcan, username: account.username, temporaryPassword: account.temporaryPassword, emailSent: !!candidatResponse.data.delivery?.emailSent}));
+                delete candidatResponse.data.account;
+            }
 
             if (!candidatResponse.data) {
                 throw new Error(candidatResponse.message || 'Erreur lors de la création du candidat');

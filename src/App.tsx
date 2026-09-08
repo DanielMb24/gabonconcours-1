@@ -108,7 +108,7 @@ function App() {
 
                         {/* Routes pour nouvelles candidatures avec filières */}
                         <Route path="/candidature/:concoursId" element={<ChoixFiliere/>}/>
-                        <Route path="/candidature/:concoursId/filiere/:filiereId" element={<CandidateAccountRequired><Candidature/></CandidateAccountRequired>}/>
+                        <Route path="/candidature/:concoursId/filiere/:filiereId" element={<Candidature/>}/>
 
                         <Route path="/confirmation/:numeroCandidature" element={<Confirmation/>}/>
                         <Route path="/documents/:numeroCandidature" element={<Documents/>}/>

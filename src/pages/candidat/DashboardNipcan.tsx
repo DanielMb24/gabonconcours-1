@@ -1,3 +1,4 @@
+import CandidatePasswordSettings from '@/components/CandidatePasswordSettings';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -615,7 +616,7 @@ const DashboardNipcan: React.FC = () => {
             return (
                 <div className="space-y-6">
                     <div><h2 className="text-2xl font-bold text-gray-900">Paramètres</h2><p className="mt-1 text-gray-600">Gérez votre session et vos préférences d’accès.</p></div>
-                    <Card><CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-gray-900">Session candidat</p><p className="text-sm text-gray-600">Déconnectez-vous lorsque vous utilisez un appareil partagé.</p></div><Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/>Se déconnecter</Button></CardContent></Card>
+                    <CandidatePasswordSettings/><Card><CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-gray-900">Session candidat</p><p className="text-sm text-gray-600">Déconnectez-vous lorsque vous utilisez un appareil partagé.</p></div><Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/>Se déconnecter</Button></CardContent></Card>
                 </div>
             );
         }

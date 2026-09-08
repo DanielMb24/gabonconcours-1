@@ -29,8 +29,8 @@ export default function LoginCandidat() {
         finally {setBusy(false);}
     }
     return <Layout><div className="mx-auto grid max-w-5xl gap-10 px-4 py-12 md:grid-cols-2 md:items-center">
-        <div className="space-y-5"><p className="text-sm font-semibold uppercase tracking-widest text-primary">Espace candidat</p><h1 className="text-4xl font-bold">Un seul compte pour tous vos concours.</h1><p className="text-muted-foreground">Retrouvez vos candidatures, documents et résultats. Votre NIPCAN conserve vos informations personnelles pour vos prochaines inscriptions.</p><div className="rounded-xl bg-primary/5 p-5 text-sm">Vous avez déjà un NIPCAN ? Activez votre compte avec l’email utilisé lors de votre candidature. Vos informations et vos dossiers seront conservés.</div></div>
-        <Card><CardHeader><CardTitle>{register ? 'Créer ou récupérer mon compte' : 'Connexion'}</CardTitle></CardHeader><CardContent><form onSubmit={submit} className="space-y-4">
+        <div className="space-y-5"><p className="text-sm font-semibold uppercase tracking-widest text-primary">Espace candidat</p><h1 className="text-4xl font-bold">Un seul compte pour tous vos concours.</h1><p className="text-muted-foreground">Retrouvez vos candidatures, documents et résultats. Votre NIPCAN conserve vos informations personnelles pour vos prochaines inscriptions.</p><div className="rounded-xl bg-primary/5 p-5 text-sm">Première candidature ? Votre compte et votre mot de passe temporaire seront créés automatiquement en remplissant le formulaire de candidature.</div></div>
+        <Card><CardHeader><CardTitle>{register ? 'Récupérer mon compte' : 'Connexion'}</CardTitle></CardHeader><CardContent><Button variant="outline" className="mb-4 w-full" onClick={() => navigate("/concours")}>Faire ma première candidature</Button><form onSubmit={submit} className="space-y-4">
             <fieldset disabled={busy} className="space-y-4">
                 {register ? <><div className="grid grid-cols-2 gap-3">{field('firstName', 'Prénom')}{field('lastName', 'Nom')}</div>{field('email', 'Adresse email', 'email')}{field('phone', 'Téléphone (avec indicatif)', 'tel')}{field('username', 'Nom d’utilisateur')}{field('nipcan', 'NIPCAN existant (facultatif)', 'text', false)}</> : field('identifier', 'Email, téléphone ou nom d’utilisateur')}
                 {field('password', register ? 'Mot de passe (10 caractères minimum)' : 'Mot de passe', 'password')}
@@ -38,7 +38,7 @@ export default function LoginCandidat() {
                 {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
                 <Button type="submit" className="w-full">{busy ? 'Veuillez patienter…' : register ? verificationId ? 'Vérifier et ouvrir mon compte' : 'Recevoir le code par email' : 'Se connecter'}</Button>
             </fieldset>
-            <Button type="button" variant="ghost" disabled={busy} className="h-auto w-full whitespace-normal" onClick={() => {setRegister(!register); setVerificationId(''); setError('');}}>{register ? 'J’ai déjà un compte : me connecter' : 'Créer un compte / activer mon NIPCAN / mot de passe oublié'}</Button>
+            <Button type="button" variant="ghost" disabled={busy} className="h-auto w-full whitespace-normal" onClick={() => {setRegister(!register); setVerificationId(''); setError('');}}>{register ? 'J’ai déjà un compte : me connecter' : 'Activer un ancien NIPCAN / mot de passe oublié'}</Button>
         </form></CardContent></Card>
     </div></Layout>;
 }

@@ -204,7 +204,7 @@ const Candidature = () => {
 
     useEffect(() => {
         const nipcan = localStorage.getItem('candidat_nipcan');
-        if (nipcan) {setCandidatForm(previous => ({...previous, nipcan})); nipSearchMutation.mutate(nipcan);}
+        if (nipcan && localStorage.getItem('candidate_token')) {setCandidatForm(previous => ({...previous, nipcan})); nipSearchMutation.mutate(nipcan);}
     }, []);
 
     // Récupération des données de référence
@@ -260,6 +260,7 @@ const Candidature = () => {
     };
 
     const handleNipSearch = () => {
+        if (!localStorage.getItem('candidate_token')) {navigate(`/connexion?redirect=${encodeURIComponent(location.pathname)}`); return;}
         if (candidat.nipcan.trim()) {
             setSearchingNip(true);
             nipSearchMutation.mutate(candidat.nipcan);
