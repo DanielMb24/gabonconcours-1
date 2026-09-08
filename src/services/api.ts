@@ -65,9 +65,10 @@ export class ApiService {
                 data,
                 timeout: options?.timeout ?? 20000,
                 headers: isFormData
-                    ? {'Content-Type': 'multipart/form-data'}
+                    ? {'Content-Type': 'multipart/form-data', ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}), 'X-Candidate-Token': localStorage.getItem('candidate_token') || ''}
                     : {
                         'Content-Type': 'application/json',
+                        'X-Candidate-Token': localStorage.getItem('candidate_token') || '',
                         ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
                     },
             });
@@ -105,6 +106,7 @@ export class ApiService {
                 timeout: 30000,
                 headers: {
                     'Content-Type': 'multipart/form-data',
+                    'X-Candidate-Token': localStorage.getItem('candidate_token') || '',
                     ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
                 },
             });
@@ -275,8 +277,8 @@ export class ApiService {
         return this.makeRequest<T>(`/concours/${id}`, 'DELETE');
     }
 
-    async getFiliereWithMatieres<T>(filiereId: string): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>(`/filieres/${filiereId}/matieres`, 'GET');
+    async getFiliereWithMatieres<T>(filiereId: string, concoursId?: string): Promise<ApiResponse<T>> {
+        return this.makeRequest<T>(`/filieres/${filiereId}/matieres${concoursId ? `?concours_id=${concoursId}` : ""}`, 'GET');
     }
 
     async getProvinces<T>(): Promise<ApiResponse<T>> {

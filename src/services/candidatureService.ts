@@ -72,6 +72,7 @@ class CandidatureService {
 
             const response = await fetch(`${this.baseUrl}/candidats`, {
                 method: 'POST',
+                headers: {'X-Candidate-Token': localStorage.getItem('candidate_token') || ''},
                 body: formData,
             });
 

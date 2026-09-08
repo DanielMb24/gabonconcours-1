@@ -20,6 +20,7 @@ import {
     Archive,
     MessageSquare,
     UserCircle,
+    ChevronDown,
     BrainCircuit
 } from 'lucide-react';
 import {useAdminAuth} from '@/contexts/AdminAuthContext';
@@ -36,6 +37,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
     const {admin, logout} = useAdminAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     const isNestedLayout = useContext(AdminLayoutContext);
 
     // Certaines anciennes pages incluent encore AdminLayout alors que la route le fournit déjà.
@@ -52,6 +54,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
         if (admin?.role === 'super_admin') {
             return [
                 ...baseItems,
+                { path: '/admin/gestion-etablissements', label: 'Établissements', icon: Building },
+                { path: '/admin/gestion-admins', label: 'Administrateurs', icon: UserCog },
+                { path: '/admin/concour', label: 'Gérer les concours', icon: Trophy },
+                { path: '/admin/filieres', label: 'Gérer les filières', icon: GraduationCap },
+                { path: '/admin/matieres', label: 'Gérer les matières', icon: BookOpen },
+                { path: '/admin/configuration-ia', label: 'Configuration IA', icon: BrainCircuit },
+                { path: '/admin/niveaux', label: 'Niveaux', icon: GraduationCap },
                 { path: '/admin/candList', label: 'Candidats', icon: Users },
                 { path: '/admin/concours-filieres', label: 'Concours x Filières', icon: Trophy },
                 { path: '/admin/filiere-matieres', label: 'Filières x Matières', icon: BookOpen },
@@ -99,12 +108,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
     };
 
     const menuItems = getMenuItems();
+    const groups = [
+        { label: 'Administration', icon: Building, paths: ['gestion-etablissements', 'gestion-admins', 'sous-admins', 'configuration-ia'] },
+        { label: 'Concours et formations', icon: Trophy, paths: ['concour', 'concours', 'filieres', 'matieres', 'niveaux', 'concours-filieres', 'filiere-matieres'] },
+        { label: 'Candidatures', icon: Users, paths: ['candList', 'candidats', 'dossiers', 'paiements', 'notes'] },
+        { label: 'Suivi et statistiques', icon: BarChart3, paths: ['statistiques', 'archives', 'logs'] },
+        { label: 'Communication', icon: MessageSquare, paths: ['support', 'messagerie'] },
+    ].map(group => ({ ...group, items: menuItems.filter(item => group.paths.includes(item.path.split('/')[2])) })).filter(group => group.items.length);
 
     const isActive = (path: string) => {
         if (path === '/admin/dashboard') {
             return location.pathname === '/admin' || location.pathname === '/admin/dashboard';
         }
-        return location.pathname.startsWith(path);
+        return location.pathname === path || location.pathname.startsWith(`${path}/`);
     };
 
     return (
@@ -119,7 +135,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                 </div>
 
                 <nav className="px-4 pb-4 space-y-1 flex-1 overflow-y-auto">
-                    {menuItems.map((item) => (
+                    {menuItems.filter(item => ['/admin/dashboard', '/admin/profile'].includes(item.path)).map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
@@ -134,6 +150,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                             <span>{item.label}</span>
                         </Link>
                     ))}
+                    {groups.map(group => {
+                        const active = group.items.some(item => isActive(item.path));
+                        const expanded = openGroups[group.label] ?? active;
+                        const id = `menu-${group.paths[0]}`;
+                        return <div key={group.label} className="pt-1">
+                            <button type="button" aria-expanded={expanded} aria-controls={id} onClick={() => setOpenGroups(previous => ({...previous, [group.label]: !expanded}))} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium ${active ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100'}`}>
+                                <group.icon className="h-5 w-5 shrink-0"/><span className="flex-1">{group.label}</span><ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}/>
+                            </button>
+                            <div id={id} hidden={!expanded} className="ml-5 mt-1 space-y-1 border-l border-slate-200 pl-3">
+                                {group.items.map(item => <Link key={item.path} to={item.path} aria-current={isActive(item.path) ? 'page' : undefined} onClick={() => setMobileMenuOpen(false)} className={`block rounded-lg px-3 py-2 text-sm ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-slate-600 hover:bg-slate-100'}`}>{item.label}</Link>)}
+                            </div>
+                        </div>;
+                    })}
                 </nav>
 
                 <div className="p-4 border-t border-border">
@@ -174,7 +203,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = memo(({children}) => {
                             <div>
                             <h1 className="text-lg font-semibold text-foreground">Administration</h1>
                             <p className="hidden sm:block text-sm text-muted-foreground">
-                                {admin?.etablissement_nom || 'Gestion de la plateforme GabConcours'}
+                                {admin?.role === 'super_admin' ? 'Superadministration · Tous les établissements' : admin?.etablissement_nom || 'Gestion de la plateforme GabConcours'}
                             </p>
                             </div>
                         </div>

@@ -31,8 +31,8 @@ const ChoixFiliere = () => {
     });
 
     const {data: matieresData} = useQuery({
-        queryKey: ['filiere-matieres', selectedFiliere],
-        queryFn: () => apiService.getFiliereWithMatieres(selectedFiliere!),
+        queryKey: ['filiere-matieres', concoursId, selectedFiliere],
+        queryFn: () => apiService.getFiliereWithMatieres(selectedFiliere!, concoursId),
         enabled: !!selectedFiliere,
     });
 

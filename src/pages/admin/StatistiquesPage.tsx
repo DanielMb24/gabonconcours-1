@@ -11,7 +11,7 @@ const StatistiquesPage = () => {
     const [filterEtablissement, setFilterEtablissement] = useState<string>('all');
     const [filterFiliere, setFilterFiliere] = useState<string>('all');
     const [filterConcours, setFilterConcours] = useState<string>('all');
-    const [filterPeriode, setFilterPeriode] = useState<string>('month');
+    const [filterPeriode, setFilterPeriode] = useState<string>('all');
 
     // Récupérer les statistiques
     const { data: stats, isLoading, error, refetch } = useQuery({
@@ -23,7 +23,8 @@ const StatistiquesPage = () => {
             if (filterConcours !== 'all') params.append('concours_id', filterConcours);
             params.append('periode', filterPeriode);
             
-            const response = await apiService.makeRequest(`/statistics/global?${params.toString()}`, 'GET');
+            const response = await apiService.makeRequest<any>(`/statistics/global?${params.toString()}`, 'GET');
+            if (!response.success) throw new Error(response.message || "Statistiques indisponibles");
             return response.data;
         }
     });
@@ -32,28 +33,30 @@ const StatistiquesPage = () => {
     const { data: etablissements } = useQuery({
         queryKey: ['etablissements'],
         queryFn: async () => {
-            const response = await apiService.makeRequest('/etablissements', 'GET');
-            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            const response = await apiService.makeRequest<any[]>('/etablissements', 'GET');
+            return Array.isArray(response.data) ? response.data : [];
         }
     });
 
     const { data: filieres } = useQuery({
-        queryKey: ['filieres'],
+        queryKey: ['filieres-stats', filterConcours],
         queryFn: async () => {
-            const response = await apiService.makeRequest('/filieres', 'GET');
-            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            const response = await apiService.makeRequest<any[]>(filterConcours === 'all' ? '/filieres' : `/concours/${filterConcours}/filieres`, 'GET');
+            return Array.isArray(response.data) ? response.data : [];
         }
     });
 
     const { data: concours } = useQuery({
-        queryKey: ['concours-stats'],
+        queryKey: ['concours-stats', filterEtablissement],
         queryFn: async () => {
-            const response = await apiService.makeRequest('/concours', 'GET');
-            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            const response = await apiService.makeRequest<any[]>(filterEtablissement === 'all' ? '/concours' : `/concours?etablissement_id=${filterEtablissement}`, 'GET');
+            return Array.isArray(response.data) ? response.data : [];
         }
     });
 
     const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--secondary))', 'hsl(var(--destructive))'];
+
+    if (isLoading) return <p className="p-6">Chargement des statistiques…</p>;
 
     if (error) {
         return <ErrorMessage message="Impossible de charger les statistiques" onRetry={refetch} />;
@@ -79,7 +82,7 @@ const StatistiquesPage = () => {
             color: "text-purple-600"
         },
         {
-            title: "Taux de Réussite",
+            title: "Dossiers validés / dossiers décidés",
             value: `${stats?.taux_reussite || 0}%`,
             icon: TrendingUp,
             color: "text-orange-600"
@@ -106,7 +109,7 @@ const StatistiquesPage = () => {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Select value={filterEtablissement} onValueChange={setFilterEtablissement}>
+                        <Select value={filterEtablissement} onValueChange={value => {setFilterEtablissement(value); setFilterConcours('all'); setFilterFiliere('all');}}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Établissement" />
                             </SelectTrigger>
@@ -134,7 +137,7 @@ const StatistiquesPage = () => {
                             </SelectContent>
                         </Select>
 
-                        <Select value={filterConcours} onValueChange={setFilterConcours}>
+                        <Select value={filterConcours} onValueChange={value => {setFilterConcours(value); setFilterFiliere('all');}}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Concours" />
                             </SelectTrigger>
@@ -188,6 +191,7 @@ const StatistiquesPage = () => {
                 })}
             </div>
 
+            {stats?.total_candidatures === 0 && <p className="rounded-xl border bg-white p-6 text-muted-foreground">Aucune candidature pour ces filtres. Essayez une autre période.</p>}
             {/* Graphiques */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Évolution des inscriptions */}

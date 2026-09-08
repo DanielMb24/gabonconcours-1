@@ -28,7 +28,7 @@ import {
     X
 } from 'lucide-react';
 import { candidatePortalService } from '@/services/candidatePortalService';
-import { BACKEND_ORIGIN } from '@/services/api';
+import { apiService, BACKEND_ORIGIN } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
 // Import des composants existants
@@ -196,6 +196,8 @@ const DashboardNipcan: React.FC = () => {
     }, [actualNipcan, loadDashboardData]);
 
     const handleLogout = () => {
+        void apiService.makeRequest('/candidate-auth/logout', 'POST');
+        localStorage.removeItem('candidate_token');
         localStorage.removeItem('candidat_nipcan');
         navigate('/connexion');
     };
