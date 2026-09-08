@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 version: 2
 
 updates:
@@ -52,3 +53,20 @@ updates:
     commit-message:
       prefix: "ci(docker)"
       include: "scope"
+=======
+# Frontend
+cd /home/devgroup-africa/projects/projets-internes/devgroup-concours/frontend
+mkdir -p .github/workflows
+# Créer ci-frontend.yml
+git add .github/
+git commit -m "CI: Ajouter workflow frontend DevGroup"
+git push
+
+# Backend
+cd /home/devgroup-africa/projects/projets-internes/devgroup-concours/api
+mkdir -p .github/workflows
+# Créer ci-backend.yml
+git add .github/
+git commit -m "CI: Ajouter workflow backend DevGroup"
+git push
+>>>>>>> 3b04e70d4053b82d19f7f30d242f372782dfacd1
