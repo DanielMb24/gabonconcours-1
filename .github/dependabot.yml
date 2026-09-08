@@ -1,0 +1,54 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+    open-pull-requests-limit: 10
+    pull-request-branch-name:
+      separator: "/"
+    reviewers:
+      - DanielMb24
+    labels:
+      - "🔧 dependencies"
+      - "📦 npm"
+      - "🎨 frontend"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+    open-pull-requests-limit: 5
+    pull-request-branch-name:
+      separator: "/"
+    labels:
+      - "🤖 github-actions"
+      - "🎨 frontend"
+    commit-message:
+      prefix: "ci(actions)"
+      include: "scope"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+    open-pull-requests-limit: 5
+    pull-request-branch-name:
+      separator: "/"
+    labels:
+      - "🐳 docker"
+      - "🎨 frontend"
+    commit-message:
+      prefix: "ci(docker)"
+      include: "scope"
