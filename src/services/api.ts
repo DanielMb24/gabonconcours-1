@@ -379,7 +379,7 @@ export class ApiService {
     }
 
     async sendMessage<T>(messageData: any): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>('/messages', 'POST', messageData);
+        return this.makeRequest<T>('/messages/candidat', 'POST', messageData);
     }
 
     // Documents - nouvelles méthodes

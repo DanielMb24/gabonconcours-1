@@ -56,7 +56,7 @@ const MessagerieAdmin: React.FC = () => {
     const replyMutation = useMutation({
         mutationFn: async (data: { message_id: number; nupcan: string; sujet: string; message: string }) => {
             const admin = JSON.parse(localStorage.getItem('adminUser') || '{}');
-            return await apiService.makeRequest('/messages/admin/repondre', 'POST', {
+            return await apiService.makeRequest('/messages/admin', 'POST', {
                 ...data,
                 admin_id: admin.id,
             });
