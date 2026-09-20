@@ -126,7 +126,7 @@ const CandidatureComplete = () => {
                 if (key === 'photo' && value instanceof File) {
                     submitData.append('photo', value);
                 } else if (value !== undefined && value !== null) {
-                    submitData.append(key, value.toString());
+                    submitData.append(key, String(value));
                 }
             });
 

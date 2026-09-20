@@ -40,14 +40,14 @@ export interface DocumentChecklist {
 }
 
 const mapDocument = (doc: any): Document => ({
-  id: String(doc.id), nomdoc: doc.nomdoc, type: doc.nom_fichier || doc.type,
-  document_statut: doc.document_statut || doc.statut || 'en_attente',
-  url: doc.docdsr || doc.nom_fichier || '', taille: doc.taille,
-  requirement_id: doc.requirement_id, obligatoire: doc.obligatoire,
-  commentaire_validation: doc.commentaire_validation, nom_fichier: doc.nom_fichier,
-  mime_type: doc.mime_type, version: doc.version, created_at: doc.created_at, updated_at: doc.updated_at,
-  ai_status: doc.ai_status || 'disabled', ai_recommendation: doc.ai_recommendation || null,
-  ai_confidence: doc.ai_confidence ?? null, ai_reason: doc.ai_reason || '',
+  id: String(doc?.id ?? doc?._id ?? ''), nomdoc: doc?.nomdoc ?? '', type: doc?.nom_fichier || doc?.type,
+  document_statut: doc?.document_statut || doc?.statut || 'en_attente',
+  url: doc?.docdsr || doc?.nom_fichier || '', taille: doc?.taille,
+  requirement_id: doc?.requirement_id, obligatoire: doc?.obligatoire,
+  commentaire_validation: doc?.commentaire_validation, nom_fichier: doc?.nom_fichier,
+  mime_type: doc?.mime_type, version: doc?.version, created_at: doc?.created_at, updated_at: doc?.updated_at,
+  ai_status: doc?.ai_status || 'disabled', ai_recommendation: doc?.ai_recommendation || null,
+  ai_confidence: doc?.ai_confidence ?? null, ai_reason: doc?.ai_reason || '',
 });
 
 export interface DocumentData {
@@ -71,7 +71,8 @@ export const documentService = {
   async getDocumentsByNupcan(nupcan: string): Promise<Document[]> {
     try {
       const response = await api.get(candidatePortalRoutes.documents(nupcan));
-      return response.data.data.map(mapDocument);
+      const items = (response as any)?.data?.data;
+      return Array.isArray(items) ? items.map(mapDocument) : [];
     } catch (error) {
       console.error('Error fetching documents by nupcan:', error);
       throw new Error('Failed to fetch documents');
@@ -80,8 +81,10 @@ export const documentService = {
 
   async getChecklist(nupcan: string): Promise<DocumentChecklist> {
     const response = await api.get(candidatePortalRoutes.documentChecklist(nupcan));
-    const data = response.data.data;
-    return { ...data, checklist: data.checklist.map((item: any) => ({ requirement: item.requirement, document: item.document ? mapDocument(item.document) : null })), supplemental: data.supplemental.map(mapDocument) };
+    const data = (response as any)?.data?.data ?? { checklist: [], supplemental: [] };
+    const checklist = Array.isArray(data.checklist) ? data.checklist : [];
+    const supplemental = Array.isArray(data.supplemental) ? data.supplemental : [];
+    return { ...data, checklist: checklist.map((item: any) => ({ requirement: item?.requirement, document: item?.document ? mapDocument(item.document) : null })), supplemental: supplemental.map(mapDocument) };
   },
 
   async uploadDocument(formData: FormData): Promise<Document> {
@@ -91,12 +94,12 @@ export const documentService = {
       });
       const doc = response.data.data;
       return {
-        id: doc.id.toString(),
-        nomdoc: doc.nomdoc,
-        type: doc.type,
-        document_statut: doc.statut || 'en_attente',
-        url: doc.docdsr || doc.nom_fichier,
-        taille: doc.taille,
+        id: String(doc?.id ?? ''),
+        nomdoc: doc?.nomdoc ?? '',
+        type: doc?.type ?? '',
+        document_statut: doc?.statut || 'en_attente',
+        url: doc?.docdsr || doc?.nom_fichier || '',
+        taille: doc?.taille,
       };
     } catch (error: any) {
       console.error('Error uploading document:', error);
@@ -124,12 +127,12 @@ export const documentService = {
       const doc = response.data.data;
 
      return {
-  id: doc.id?.toString() || id,
-  nomdoc: doc.nomdoc || '',
-  type: doc.type || '',
-  document_statut: doc.statut || doc.document_statut || 'en_attente',
-  url: doc.docdsr || doc.nom_fichier || doc.chemin_fichier || '',
-  taille: doc.taille || doc.taille_fichier || 0,
+  id: String(doc?.id ?? id),
+  nomdoc: doc?.nomdoc || '',
+  type: doc?.type || '',
+  document_statut: doc?.statut || doc?.document_statut || 'en_attente',
+  url: doc?.docdsr || doc?.nom_fichier || doc?.chemin_fichier || '',
+  taille: doc?.taille || doc?.taille_fichier || 0,
   docdsr: doc.docdsr || '',
 };
 

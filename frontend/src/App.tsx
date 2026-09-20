@@ -1,4 +1,5 @@
 import CandidateAccountRequired from '@/components/CandidateAccountRequired';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import {BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {Toaster} from '@/components/ui/toaster';
@@ -96,6 +97,7 @@ function App() {
             <LanguageProvider>
                 <AdminAuthProvider>
                     <Router>
+                    <ErrorBoundary>
                     <Routes>
                         {/* Routes publiques */}
                         <Route path="/" element={<NewHomePage/>}/>
@@ -220,6 +222,7 @@ function App() {
 
                         <Route path="*" element={<NotFound/>}/>
                     </Routes>
+                    </ErrorBoundary>
                         <Toaster/>
                     </Router>
                 </AdminAuthProvider>
