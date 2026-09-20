@@ -126,7 +126,7 @@ const CandidatureComplete = () => {
                 if (key === 'photo' && value instanceof File) {
                     submitData.append('photo', value);
                 } else if (value !== undefined && value !== null) {
-                    submitData.append(key, value.toString());
+                    submitData.append(key, String(value));
                 }
             });
 
@@ -400,7 +400,7 @@ const CandidatureComplete = () => {
                                         <div>
                                             <Label htmlFor="niveau_id">Niveau d'études <span
                                                 className="text-red-500">*</span></Label>
-                                            <Select value={formData.niveau_id.toString()}
+                                            <Select value={String(formData.niveau_id ?? '')}
                                                     onValueChange={(value) => setFormData(prev => ({
                                                         ...prev,
                                                         niveau_id: parseInt(value)
@@ -409,9 +409,9 @@ const CandidatureComplete = () => {
                                                     <SelectValue placeholder="Sélectionner un niveau"/>
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {niveaux.map((niveau: any) => (
-                                                        <SelectItem key={niveau.id} value={niveau.id.toString()}>
-                                                            {niveau.nomniv}
+                                                    {niveaux.map((niveau: any, index: number) => (
+                                                        <SelectItem key={String(niveau?.id ?? index)} value={String(niveau?.id ?? '')}>
+                                                            {niveau?.nomniv ?? 'Niveau'}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -437,7 +437,7 @@ const CandidatureComplete = () => {
                                         <div>
                                             <Label htmlFor="proorg">Province d'origine <span
                                                 className="text-red-500">*</span></Label>
-                                            <Select value={formData.proorg.toString()}
+                                            <Select value={String(formData.proorg ?? '')}
                                                     onValueChange={(value) => setFormData(prev => ({
                                                         ...prev,
                                                         proorg: parseInt(value)
@@ -446,9 +446,9 @@ const CandidatureComplete = () => {
                                                     <SelectValue placeholder="Province d'origine"/>
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {provinces.map((province: any) => (
-                                                        <SelectItem key={province.id} value={province.id.toString()}>
-                                                            {province.nompro}
+                                                    {provinces.map((province: any, index: number) => (
+                                                        <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                            {province?.nompro ?? 'Province'}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -458,7 +458,7 @@ const CandidatureComplete = () => {
                                         <div>
                                             <Label htmlFor="proact">Province actuelle <span
                                                 className="text-red-500">*</span></Label>
-                                            <Select value={formData.proact.toString()}
+                                            <Select value={String(formData.proact ?? '')}
                                                     onValueChange={(value) => setFormData(prev => ({
                                                         ...prev,
                                                         proact: parseInt(value)
@@ -467,9 +467,9 @@ const CandidatureComplete = () => {
                                                     <SelectValue placeholder="Province actuelle"/>
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {provinces.map((province: any) => (
-                                                        <SelectItem key={province.id} value={province.id.toString()}>
-                                                            {province.nompro}
+                                                    {provinces.map((province: any, index: number) => (
+                                                        <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                            {province?.nompro ?? 'Province'}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -479,7 +479,7 @@ const CandidatureComplete = () => {
                                         <div>
                                             <Label htmlFor="proaff">Province d'affectation <span
                                                 className="text-red-500">*</span></Label>
-                                            <Select value={formData.proaff.toString()}
+                                            <Select value={String(formData.proaff ?? '')}
                                                     onValueChange={(value) => setFormData(prev => ({
                                                         ...prev,
                                                         proaff: parseInt(value)
@@ -488,9 +488,9 @@ const CandidatureComplete = () => {
                                                     <SelectValue placeholder="Province d'affectation"/>
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {provinces.map((province: any) => (
-                                                        <SelectItem key={province.id} value={province.id.toString()}>
-                                                            {province.nompro}
+                                                    {provinces.map((province: any, index: number) => (
+                                                        <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                            {province?.nompro ?? 'Province'}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>

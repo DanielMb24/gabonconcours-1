@@ -12,6 +12,7 @@ export interface ApiResponse<T> {
     data?: T;
     message?: string;
     errors?: string[];
+    status?: number;
 }
 
 // Helper type for legacy compatibility
@@ -82,6 +83,7 @@ export class ApiService {
                     success: false,
                     message: error.response.data.message || 'Erreur lors de la requête',
                     errors: error.response.data.errors || [error.message],
+                    status: error.response.status,
                 };
             }
 
@@ -91,6 +93,7 @@ export class ApiService {
                     ? 'Le délai de réponse est dépassé. Veuillez réessayer.'
                     : 'Erreur inconnue lors de la requête',
                 errors: [error.message],
+                status: error.response?.status,
             };
         }
     }
@@ -120,6 +123,7 @@ export class ApiService {
                     success: false,
                     message: error.response.data.message || 'Erreur lors de la requête',
                     errors: error.response.data.errors || [error.message],
+                    status: error.response.status,
                 };
             }
 
@@ -127,6 +131,7 @@ export class ApiService {
                 success: false,
                 message: 'Erreur inconnue lors de la requête',
                 errors: [error.message],
+                status: error.response?.status,
             };
         }
     }

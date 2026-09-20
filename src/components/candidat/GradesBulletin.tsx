@@ -77,9 +77,9 @@ const GradesBulletin: React.FC<GradesBulletinProps> = ({ nupcan, candidat }) => 
 
         // Tableau des notes
         const tableData = notes.map(note => [
-            note.nommat,
-            `${note.note}/20`,
-            note.coefmat.toString()
+            note?.nommat ?? '',
+            `${note?.note ?? '—'}/20`,
+            String(note?.coefmat ?? '')
         ]);
 
         autoTable(doc, {
@@ -203,10 +203,10 @@ const GradesBulletin: React.FC<GradesBulletinProps> = ({ nupcan, candidat }) => 
                             <tbody className="divide-y">
                                 {notes.map((note, index) => (
                                     <tr key={index} className="hover:bg-muted/50">
-                                        <td className="px-4 py-3">{note.nommat}</td>
-                                        <td className="px-4 py-3 text-center font-semibold">{note.note}/20</td>
+                                        <td className="px-4 py-3">{note?.nommat ?? '—'}</td>
+                                        <td className="px-4 py-3 text-center font-semibold">{note?.note ?? '—'}/20</td>
                                         <td className="px-4 py-3 text-center">
-                                            <Badge variant="secondary">{note.coefmat}</Badge>
+                                            <Badge variant="secondary">{note?.coefmat ?? '—'}</Badge>
                                         </td>
                                     </tr>
                                 ))}

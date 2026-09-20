@@ -163,30 +163,38 @@ const Candidature = () => {
         mutationFn: (nip: string) => apiService.getCandidatByNipcan(nip),
         onSuccess: (response) => {
             if (response.success && response.data) {
-                const candidatData = response.data;
+                const candidatData = response.data as any;
                 setPhotoPreview(candidatData.phtcan || null);
                 setCandidatForm(prev => ({
                     ...prev,
                     nomcan: candidatData.nomcan || '',
                     prncan: candidatData.prncan || '',
-                    dtncan: candidatData.dtncan ? candidatData.dtncan.split('T')[0] : '',
+                    dtncan: candidatData.dtncan ? String(candidatData.dtncan).split('T')[0] : '',
                     ldncan: candidatData.ldncan || '',
                     telcan: candidatData.telcan || '',
                     phtcan: candidatData.phtcan || '',
                     maican: candidatData.maican || '',
-                    proorg: candidatData.proorg?.toString() || '',
-                    proact: candidatData.proact?.toString() || '',
-                    proaff: candidatData.proaff?.toString() || '',
+                    proorg: candidatData.proorg != null ? String(candidatData.proorg) : '',
+                    proact: candidatData.proact != null ? String(candidatData.proact) : '',
+                    proaff: candidatData.proaff != null ? String(candidatData.proaff) : '',
                 }));
 
                 // Valider l'âge après le remplissage automatique
                 if (candidatData.dtncan) {
-                    validateAge(candidatData.dtncan.split('T')[0]);
+                    validateAge(String(candidatData.dtncan).split('T')[0]);
                 }
 
                 toast({
                     title: "Informations trouvées",
                     description: "Vos informations ont été automatiquement remplies",
+                });
+            } else {
+                toast({
+                    title: (response as any).status === 401 ? "Session requise" : "NIP non trouvé",
+                    description: (response as any).status === 401
+                        ? "Votre session a expiré. Reconnectez-vous ou continuez la saisie manuellement."
+                        : "Aucun candidat trouvé avec ce NIP gabonais. Vous pouvez continuer manuellement.",
+                    variant: "destructive",
                 });
             }
         },
@@ -243,9 +251,9 @@ const Candidature = () => {
         );
     }
 
-    const provinces = provincesResponse?.data || [];
-    const filieres = filieresResponse?.data || [];
-    const concours = concoursResponse?.data;
+    const provinces = Array.isArray(provincesResponse?.data) ? provincesResponse.data : [];
+    const filieres = Array.isArray(filieresResponse?.data) ? filieresResponse.data : [];
+    const concours = concoursResponse?.data as any;
 
     const handleInputChange = (field: string, value: string) => {
         setCandidatForm(prev => ({
@@ -323,7 +331,7 @@ const Candidature = () => {
 
             // Préparer les données pour l'endpoint
             const formData = new FormData();
-            formData.append('niveau_id', concours.niveau_id.toString());
+            formData.append('niveau_id', String(concours.niveau_id ?? ''));
 
             // Ajouter la photo
 
@@ -494,9 +502,9 @@ const Candidature = () => {
                                                 <SelectValue placeholder="Choisir votre province d'origine"/>
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {provinces.map(province => (
-                                                    <SelectItem key={province.id} value={province.id.toString()}>
-                                                        {province.nompro}
+                                                {provinces.map((province: any, index: number) => (
+                                                    <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                        {province?.nompro ?? 'Province'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -511,9 +519,9 @@ const Candidature = () => {
                                                 <SelectValue placeholder="Choisir votre province actuelle"/>
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {provinces.map(province => (
-                                                    <SelectItem key={province.id} value={province.id.toString()}>
-                                                        {province.nompro}
+                                                {provinces.map((province: any, index: number) => (
+                                                    <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                        {province?.nompro ?? 'Province'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -528,9 +536,9 @@ const Candidature = () => {
                                                 <SelectValue placeholder="Choisir votre province d'affectation"/>
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {provinces.map(province => (
-                                                    <SelectItem key={province.id} value={province.id.toString()}>
-                                                        {province.nompro}
+                                                {provinces.map((province: any, index: number) => (
+                                                    <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                        {province?.nompro ?? 'Province'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
