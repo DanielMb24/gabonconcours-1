@@ -401,15 +401,15 @@ const ConcoursDetails = () => {
                                             className="space-y-4"
                                         >
                                             {filieres.map((filiere: ConcoursFiliere) => (
-                                                <div key={filiere.id}
+                                                <div key={String((filiere as any)?.id ?? (filiere as any)?.filiere_id ?? Math.random())}
                                                      className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                                                     <RadioGroupItem
-                                                        value={filiere.filiere_id.toString()}
-                                                        id={`filiere-${filiere.id}`}
+                                                        value={String((filiere as any)?.filiere_id ?? '')}
+                                                        id={`filiere-${String((filiere as any)?.id ?? (filiere as any)?.filiere_id ?? '')}`}
                                                         className="mt-1"
                                                     />
                                                     <Label
-                                                        htmlFor={`filiere-${filiere.id}`}
+                                                        htmlFor={`filiere-${String((filiere as any)?.id ?? (filiere as any)?.filiere_id ?? '')}`}
                                                         className="flex-1 cursor-pointer"
                                                     >
                                                         <div className="space-y-2">

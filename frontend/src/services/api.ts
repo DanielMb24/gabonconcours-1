@@ -12,6 +12,7 @@ export interface ApiResponse<T> {
     data?: T;
     message?: string;
     errors?: string[];
+    status?: number;
 }
 
 // Helper type for legacy compatibility
@@ -55,7 +56,7 @@ export class ApiService {
         delete api.defaults.headers.Authorization;
     }
 
-    async makeRequest<T>(url: string, method: string, data?: any): Promise<ApiResponse<T>> {
+    async makeRequest<T>(url: string, method: string, data?: any, options?: { timeout?: number }): Promise<ApiResponse<T>> {
         try {
             const isFormData = data instanceof FormData;
 
@@ -63,11 +64,12 @@ export class ApiService {
                 url: `${this.baseUrl}${url}`,
                 method,
                 data,
-                timeout: 20000,
+                timeout: options?.timeout ?? 20000,
                 headers: isFormData
-                    ? {'Content-Type': 'multipart/form-data'}
+                    ? {'Content-Type': 'multipart/form-data', ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}), 'X-Candidate-Token': localStorage.getItem('candidate_token') || ''}
                     : {
                         'Content-Type': 'application/json',
+                        'X-Candidate-Token': localStorage.getItem('candidate_token') || '',
                         ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
                     },
             });
@@ -81,13 +83,17 @@ export class ApiService {
                     success: false,
                     message: error.response.data.message || 'Erreur lors de la requête',
                     errors: error.response.data.errors || [error.message],
+                    status: error.response.status,
                 };
             }
 
             return {
                 success: false,
-                message: 'Erreur inconnue lors de la requête',
+                message: error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
+                    ? 'Le délai de réponse est dépassé. Veuillez réessayer.'
+                    : 'Erreur inconnue lors de la requête',
                 errors: [error.message],
+                status: error.response?.status,
             };
         }
     }
@@ -103,6 +109,7 @@ export class ApiService {
                 timeout: 30000,
                 headers: {
                     'Content-Type': 'multipart/form-data',
+                    'X-Candidate-Token': localStorage.getItem('candidate_token') || '',
                     ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
                 },
             });
@@ -116,6 +123,7 @@ export class ApiService {
                     success: false,
                     message: error.response.data.message || 'Erreur lors de la requête',
                     errors: error.response.data.errors || [error.message],
+                    status: error.response.status,
                 };
             }
 
@@ -123,6 +131,7 @@ export class ApiService {
                 success: false,
                 message: 'Erreur inconnue lors de la requête',
                 errors: [error.message],
+                status: error.response?.status,
             };
         }
     }
@@ -273,8 +282,8 @@ export class ApiService {
         return this.makeRequest<T>(`/concours/${id}`, 'DELETE');
     }
 
-    async getFiliereWithMatieres<T>(filiereId: string): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>(`/filieres/${filiereId}/matieres`, 'GET');
+    async getFiliereWithMatieres<T>(filiereId: string, concoursId?: string): Promise<ApiResponse<T>> {
+        return this.makeRequest<T>(`/filieres/${filiereId}/matieres${concoursId ? `?concours_id=${concoursId}` : ""}`, 'GET');
     }
 
     async getProvinces<T>(): Promise<ApiResponse<T>> {
@@ -375,7 +384,7 @@ export class ApiService {
     }
 
     async sendMessage<T>(messageData: any): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>('/messages', 'POST', messageData);
+        return this.makeRequest<T>('/messages/candidat', 'POST', messageData);
     }
 
     // Documents - nouvelles méthodes

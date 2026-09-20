@@ -348,9 +348,9 @@ const Concours = () => {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">Toutes les filières</SelectItem>
-                                            {allFilieres.map((filiere: any) => (
-                                                <SelectItem key={filiere.id} value={filiere.id.toString()}>
-                                                    {filiere.nomfil}
+                                            {allFilieres.map((filiere: any, index: number) => (
+                                                <SelectItem key={String(filiere?.id ?? index)} value={String(filiere?.id ?? '')}>
+                                                    {filiere?.nomfil ?? 'Filière'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

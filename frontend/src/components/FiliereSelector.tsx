@@ -58,7 +58,7 @@ const FiliereSelector: React.FC<FiliereSelectorProps> = ({
 
     const loadFiliereWithMatieres = async (filiereId: number) => {
         try {
-            const response = await apiService.getFiliereWithMatieres(filiereId.toString());
+            const response = await apiService.getFiliereWithMatieres(String(filiereId ?? ''));
             if (response.success && response.data) {
                 setSelectedFiliere(response.data as FiliereWithMatieres);
             }
@@ -102,7 +102,7 @@ const FiliereSelector: React.FC<FiliereSelectorProps> = ({
                 </CardHeader>
                 <CardContent>
                     <Select
-                        value={selectedFiliereId?.toString() || ''}
+                        value={selectedFiliereId != null ? String(selectedFiliereId) : ''}
                         onValueChange={handleFiliereChange}
                         disabled={disabled}
                     >
@@ -110,10 +110,10 @@ const FiliereSelector: React.FC<FiliereSelectorProps> = ({
                             <SelectValue placeholder="Sélectionnez une filière"/>
                         </SelectTrigger>
                         <SelectContent>
-                            {filieres.map((filiere) => (
-                                <SelectItem key={filiere.id} value={filiere.id.toString()}>
+                            {filieres.map((filiere: any, index: number) => (
+                                <SelectItem key={String(filiere?.id ?? index)} value={String(filiere?.id ?? '')}>
                                     <div>
-                                        <div className="font-medium">{filiere.nomfil}</div>
+                                        <div className="font-medium">{filiere?.nomfil ?? 'Filière'}</div>
                                         {filiere.niveau_nomniv && (
                                             <div className="text-sm text-muted-foreground">
                                                 Niveau: {filiere.niveau_nomniv}

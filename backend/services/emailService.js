@@ -1,16 +1,18 @@
 const nodemailer = require('nodemailer');
 
 // Configuration du transporteur email
-const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
+const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT || 587);
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com',
+    host: process.env.SMTP_HOST || process.env.EMAIL_HOST || process.env.MAIL_HOST || 'smtp.gmail.com',
     port: smtpPort,
-    secure: smtpPort === 465,
+    secure: String(process.env.SMTP_SECURE || process.env.MAIL_SECURE || smtpPort === 465).toLowerCase() === 'true',
     auth: {
-        user: process.env.SMTP_USER || process.env.EMAIL_USER,
-        pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD
+        user: process.env.SMTP_USER || process.env.EMAIL_USER || process.env.MAIL_USERNAME,
+        pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || process.env.MAIL_PASSWORD
     }
 });
+
+const senderAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || process.env.MAIL_FROM_ADDRESS || process.env.MAIL_USERNAME || 'noreply@gabconcours.ga';
 
 class EmailService {
     // Envoyer les identifiants à un nouvel admin
@@ -19,7 +21,7 @@ class EmailService {
             console.log('Envoi email identifiants admin:', adminData.email);
 
             const mailOptions = {
-                from: process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || 'noreply@concours.ga',
+                from: senderAddress,
                 to: adminData.email,
                 subject: 'Vos identifiants administrateur - Plateforme Concours',
                 html: `
@@ -99,7 +101,7 @@ class EmailService {
             }
 
             const mailOptions = {
-                from: process.env.SMTP_USER || 'noreply@concours.ga',
+                from: senderAddress,
                 to: candidat.maican,
                 subject: 'Confirmation d\'inscription - Plateforme Concours',
                 html: `
@@ -175,12 +177,12 @@ class EmailService {
     }
 
     // Envoyer un reçu PDF par email
-    async sendReceiptEmail(candidatData) {
+    async sendReceiptEmail(candidatData, attachment) {
         try {
             console.log('Envoi reçu email à:', candidatData.maican);
 
             const mailOptions = {
-                from: process.env.SMTP_USER || 'noreply@concours.ga',
+                from: senderAddress,
                 to: candidatData.maican,
                 subject: `Reçu de candidature - ${candidatData.nupcan}`,
                 html: `
@@ -201,8 +203,16 @@ class EmailService {
             
             <p>Cordialement,<br>L'équipe de gestion des concours</p>
           </div>
-        `
+                `
             };
+            if (attachment?.content) {
+                mailOptions.attachments = [{
+                    filename: attachment.filename || `Recu_Candidature_${candidatData.nupcan}.pdf`,
+                    content: attachment.content,
+                    encoding: 'base64',
+                    contentType: attachment.contentType || 'application/pdf'
+                }];
+            }
 
             await transporter.sendMail(mailOptions);
             console.log('Email reçu envoyé avec succès');
@@ -218,7 +228,7 @@ class EmailService {
             console.log('Envoi reçu image email à:', data.maican);
 
             const mailOptions = {
-                from: process.env.SMTP_USER || 'noreply@concours.ga',
+                from: senderAddress,
                 to: data.maican,
                 subject: `Reçu de candidature (Image) - ${data.nupcan}`,
                 html: `
@@ -267,7 +277,7 @@ class EmailService {
             const color = data.statut === 'valide' ? '#059669' : '#dc2626';
 
             const mailOptions = {
-                from: process.env.SMTP_USER || 'noreply@concours.ga',
+                from: senderAddress,
                 to: data.maican,
                 subject: `Document ${statutText} - ${data.documentName}`,
                 html: `
@@ -305,7 +315,7 @@ class EmailService {
     // Email de confirmation de paiement
     async sendPaymentConfirmation(candidat, paiement) {
         const mailOptions = {
-            from: process.env.SMTP_USER || 'noreply@gabconcours.com',
+            from: senderAddress,
             to: candidat.maican,
             subject: 'Confirmation de paiement - GabConcours',
             html: `
@@ -338,7 +348,7 @@ class EmailService {
     async sendDocumentValidation(candidat, document, statut, commentaire) {
         const isApproved = statut === 'valide';
         const mailOptions = {
-            from: process.env.SMTP_USER || 'noreply@gabconcours.com',
+            from: senderAddress,
             to: candidat.maican,
             subject: `Document ${isApproved ? 'Validé' : 'Rejeté'} - GabConcours`,
             html: `
@@ -376,7 +386,7 @@ class EmailService {
     // Email de candidature validée
     async sendCandidatureValidated(candidat) {
         const mailOptions = {
-            from: process.env.SMTP_USER || 'noreply@gabconcours.com',
+            from: senderAddress,
             to: candidat.maican,
             subject: '🎉 Candidature validée - GabConcours',
             html: `
@@ -424,7 +434,7 @@ class EmailService {
     // Email des identifiants sub-admin
     async sendSubAdminCredentials({ to, nom, prenom, tempPassword, etablissement, role }) {
         const mailOptions = {
-            from: process.env.SMTP_USER || 'noreply@gabconcours.com',
+            from: senderAddress,
             to: to,
             subject: 'Vos identifiants d\'accès - GabConcours',
             html: `
@@ -485,7 +495,7 @@ class EmailService {
 async function sendEmail(to, subject, html) {
     try {
         const mailOptions = {
-            from: process.env.SMTP_USER || 'noreply@gabconcours.ga',
+            from: senderAddress,
             to: to,
             subject: subject,
             html: html

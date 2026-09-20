@@ -34,13 +34,13 @@ function createApp() {
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Candidate-Token'],
     optionsSuccessStatus: 204,
   };
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions));
   app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
-  app.use(express.json({ limit: '1mb' }), express.urlencoded({ extended: false, limit: '1mb' }), cookieParser());
+  app.use(express.json({ limit: '1mb', verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); } }), express.urlencoded({ extended: false, limit: '1mb' }), cookieParser());
   app.use('/api/v1', require('./routes/v1'));
   app.use(notFound, errorHandler); return app;
 }

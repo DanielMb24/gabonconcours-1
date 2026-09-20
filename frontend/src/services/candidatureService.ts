@@ -64,7 +64,7 @@ class CandidatureService {
             console.log('Service: Données filière récupérées:', filiereSelection);
 
             if (filiereSelection?.filiere_id) {
-                formData.append('filiere_id', filiereSelection.filiere_id.toString());
+                formData.append('filiere_id', String(filiereSelection.filiere_id));
             }
 
             console.log('📝 Création candidature avec FormData');
@@ -72,6 +72,7 @@ class CandidatureService {
 
             const response = await fetch(`${this.baseUrl}/candidats`, {
                 method: 'POST',
+                headers: {'X-Candidate-Token': localStorage.getItem('candidate_token') || ''},
                 body: formData,
             });
 
@@ -97,11 +98,11 @@ class CandidatureService {
 
             // Récupérer toutes les données en parallèle pour optimiser
             const [concoursResponse, filiereResponse, sessionResponse] = await Promise.allSettled([
-                candidat.concours_id ? apiService.getConcoursById(candidat.concours_id.toString()) : Promise.resolve({
+                candidat.concours_id ? apiService.getConcoursById(String(candidat.concours_id)) : Promise.resolve({
                     success: false,
                     data: null
                 }),
-                candidat.filiere_id ? apiService.getFiliereWithMatieres(candidat.filiere_id.toString()) : Promise.resolve({
+                candidat.filiere_id ? apiService.getFiliereWithMatieres(String(candidat.filiere_id)) : Promise.resolve({
                     success: false,
                     data: null
                 }),
@@ -171,9 +172,9 @@ class CandidatureService {
             let candidatResponse = await apiService.getCandidatByNupcan(nupcan);
             if (!candidatResponse.success) {
                 const nipcanResponse = await apiService.getCandidatByNip<any>(nupcan);
-                if (nipcanResponse.success && nipcanResponse.data) {
+                if (nipcanResponse.success && nipcanResponse.data && (nipcanResponse.data as any).nupcan) {
                     candidatResponse = nipcanResponse;
-                    nupcan = nipcanResponse.data.nupcan;
+                    nupcan = (nipcanResponse.data as any).nupcan;
                 }
             }
             if (!candidatResponse.success) {
@@ -188,7 +189,7 @@ class CandidatureService {
             if (candidatData && typeof candidatData === 'object' && 'concours_id' in candidatData && candidatData.concours_id) {
                 try {
                     console.log('Service: Tentative récupération concours avec ID:', candidatData.concours_id);
-                    const concoursResponse = await apiService.getConcoursById(candidatData.concours_id.toString());
+                    const concoursResponse = await apiService.getConcoursById(String(candidatData.concours_id));
                     console.log('Service: Réponse brute concours:', concoursResponse);
 
                     if (concoursResponse && concoursResponse.data) {
@@ -209,7 +210,7 @@ class CandidatureService {
             if (candidatData && typeof candidatData === 'object' && 'filiere_id' in candidatData && candidatData.filiere_id) {
                 try {
                     console.log('Service: filiere avec ID:', candidatData.filiere_id);
-                    const filiereResponse = await apiService.getFiliereWithMatieres(candidatData.filiere_id.toString());
+                    const filiereResponse = await apiService.getFiliereWithMatieres(String(candidatData.filiere_id));
                     console.log('Service: Réponse filiere:', filiereResponse);
 
                     if (filiereResponse && filiereResponse.data) {

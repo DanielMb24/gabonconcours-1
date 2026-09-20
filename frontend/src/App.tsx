@@ -1,3 +1,4 @@
+import CandidateAccountRequired from '@/components/CandidateAccountRequired';
 import {BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {Toaster} from '@/components/ui/toaster';
@@ -66,6 +67,7 @@ import MessagerieAdminPage from './pages/admin/MessagerieAdminPage';
 import MatieresManagementPage from './pages/admin/MatieresManagementPage';
 import APropos from './pages/APropos';
 import Archives from './pages/admin/Archives';
+import ConfigurationIA from '@/pages/admin/ConfigurationIA';
 
 
 const queryClient = new QueryClient({
@@ -106,7 +108,7 @@ function App() {
 
                         {/* Routes pour nouvelles candidatures avec filières */}
                         <Route path="/candidature/:concoursId" element={<ChoixFiliere/>}/>
-                        <Route path="/candidature/:concoursId/filiere/:filiereId" element={<Candidature/>}/>
+                        <Route path="/candidature/:concoursId/filiere/:filiereId" element={<CandidateAccountRequired><Candidature/></CandidateAccountRequired>}/>
 
                         <Route path="/confirmation/:numeroCandidature" element={<Confirmation/>}/>
                         <Route path="/documents/:numeroCandidature" element={<Documents/>}/>
@@ -122,7 +124,7 @@ function App() {
 
                         {/* Routes pour statut et connexion */}
                         <Route path="/statut/:nupcan" element={<StatutCandidature/>}/>
-                        <Route path="/dashboard/:nipcan" element={<DashboardNipcan/>}/>
+                        <Route path="/dashboard/:nipcan" element={<CandidateAccountRequired><DashboardNipcan/></CandidateAccountRequired>}/>
                         <Route path="/dashboard/candidature/:nupcan" element={<DashboardCandidat/>}/>
                         <Route path="/candidat/dashboard" element={<CandidatDashboard/>}/>
                         <Route path="/recap/:nupcan" element={<RecapPaiement/>}/>
@@ -151,6 +153,7 @@ function App() {
                             <Route path="candidats/:nupcan" element={<CandidateManagement/>}/>
                             <Route path="etablissements" element={<AdminEtablissements/>}/>
                             <Route path="dossiers" element={<AdminDossiers/>}/>
+                            <Route path="configuration-ia" element={<ConfigurationIA/>}/>
                             <Route path="paiements" element={<AdminPaiements/>}/>
                             <Route path="niveaux" element={<GestionNiveaux/>}/>
                             <Route path="filieres" element={<GestionFilieres/>}/>

@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -13,7 +14,17 @@ const { AppError, ok, asyncHandler } = require('../utils/api');
 const { authenticate, scopeEstablishment, requirePasswordChanged } = require('../middleware/mongoAuth');
 const { validateUploadedFiles } = require('../middleware/fileSignature');
 const router = express.Router();
+router.use(require('./catalog-management'));
+const {router: candidateAuthRouter, authenticateCandidate} = require('./candidate-auth');
+router.use(candidateAuthRouter);
+router.use(['/candidats/nipcan/:nipcan/dashboard'], authenticateCandidate, (req, res, next) => {
+  if (String(req.params.nipcan).trim().toUpperCase() !== req.candidate.nipcan) return next(new AppError(403, 'CANDIDATE_FORBIDDEN', 'Ce NIPCAN ne correspond pas à votre compte'));
+  next();
+});
+router.post('/candidats', authenticateCandidate);
+router.post('/applications', authenticateCandidate, (req, res, next) => {req.body.candidateId = req.candidate._id; req.body.candidate = {firstName: req.candidate.firstName, lastName: req.candidate.lastName, phone: req.candidate.phone}; next();});
 const authenticationLimiter = rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false,message:{success:false,error:{code:'TOO_MANY_AUTH_ATTEMPTS'},message:'Trop de tentatives. Réessayez dans quelques minutes.'}});
+const nipLookupLimiter = rateLimit({windowMs:15*60*1000,limit:60,standardHeaders:'draft-7',legacyHeaders:false,message:{success:false,error:{code:'TOO_MANY_REQUESTS'},message:'Trop de recherches. Réessayez dans quelques minutes.'}});
 const required = (...paths) => (req, _res, next) => { const missing = paths.filter(path => path.split('.').reduce((v,k) => v?.[k], req.body) == null); missing.length ? next(new AppError(422, 'VALIDATION_ERROR', 'Données invalides', missing.map(field => ({ field, message: 'Champ obligatoire' })))) : next(); };
 const requireSuperAdmin=(req,_res,next)=>req.admin?.role==='super_admin'?next():next(new AppError(403,'SUPER_ADMIN_REQUIRED','Accès réservé au super-administrateur'));
 const defaultPermissionsByRole = {
@@ -61,10 +72,10 @@ const documentUpload = multer({
 });
 router.get('/health', asyncHandler(async (_req, res) => ok(res, { database: 'mongodb', status: 'ready' }, 'Service disponible')));
 router.get('/sessions', asyncHandler(async (_req, res) => ok(res, [], 'Sessions chargées')));
-router.post('/sessions', authenticationLimiter, asyncHandler(async (req, res) => {
+router.post('/sessions', authenticationLimiter, authenticateCandidate, asyncHandler(async (req, res) => {
   const nupcan = String(req.body?.nupcan || '').trim().toUpperCase();
   const application = await Application.findOne({ nupcan }).select('candidateId').lean();
-  if (!application) throw new AppError(404, 'APPLICATION_NOT_FOUND', 'Candidature introuvable');
+  if (!application || String(application.candidateId) !== String(req.candidate._id)) throw new AppError(404, 'APPLICATION_NOT_FOUND', 'Candidature introuvable');
   const token = crypto.randomBytes(32).toString('hex');
   const session = await Session.create({
     candidateId: application.candidateId,
@@ -78,9 +89,15 @@ router.get('/contests', asyncHandler(async (req, res) => { const query = req.que
 router.get('/contests/:id', asyncHandler(async (req, res) => { const item = await Contest.findById(req.params.id).populate('programIds establishmentId').lean(); if (!item) throw new AppError(404, 'CONTEST_NOT_FOUND', 'Concours introuvable'); ok(res, item); }));
 const contestFilter = idFilter;
 const toLegacyContest = (item, totals={}) => ({ id: String(item._id), legacyId: item.legacyId, libcnc: item.title, description_concours:item.description||'', fracnc: item.fee, debcnc: item.opensAt, fincnc: item.closesAt, stacnc: item.status==='open'?'1':'0', status:item.status, sescnc:item.session||'', type_concours:item.contestType||'autre', agecnc:item.maximumAge??35, nombre_places_total:item.totalPlaces??0, duree_formation:item.trainingDuration||'', diplome_delivre:item.awardedDiploma||'', date_publication_resultats:item.resultsPublishedAt, date_debut_cours:item.coursesStartAt, series_bac_acceptees:item.acceptedBacSeries||[], criteres_selection:item.selectionCriteria||[], modalites_inscription:item.registrationSteps||[], conditions_eligibilite:item.eligibilityConditions||[], contact_email:item.contactEmail||'', contact_telephone:item.contactPhone||'', lieu_examen:item.examLocation||'', informations_complementaires:item.additionalInformation||'', etablissement_id: item.establishmentId?.legacyId || item.establishmentId?._id || item.establishmentId, etablissement_object_id:item.establishmentId?._id, etablissement_nomets: item.establishmentId?.name||'', etablissement_nom:item.establishmentId?.name||'', niveau_id: item.educationLevelId?.legacyId || item.educationLevelId?._id || item.educationLevelId, niveau_object_id:item.educationLevelId?._id, niveau_nomniv: item.educationLevelId?.name||'', nomniv:item.educationLevelId?.name||'', filieres: item.programIds || [], total_candidatures:totals.applications||0, total_documents:totals.documents||0, total_paiements:totals.payments||0, montant_paiements:totals.amount||0 });
-router.get('/concours', asyncHandler(async (_req, res) => {
+router.get('/concours', asyncHandler(async (req, res) => {
+  const query = {};
+  if (req.query.etablissement_id) {
+    const establishment = await Establishment.findOne(idFilter(String(req.query.etablissement_id))).select('_id');
+    if (!establishment) throw new AppError(404, 'ESTABLISHMENT_NOT_FOUND', 'Établissement introuvable');
+    query.establishmentId = establishment._id;
+  }
   const [items,applicationTotals,paymentTotals,documentTotals]=await Promise.all([
-    Contest.find().populate('establishmentId educationLevelId programIds').sort({closesAt:-1}).lean(),
+    Contest.find(query).populate('establishmentId educationLevelId programIds').sort({closesAt:-1}).lean(),
     Application.aggregate([{$group:{_id:'$contestId',count:{$sum:1}}}]),
     Payment.aggregate([{$lookup:{from:'applications',localField:'applicationId',foreignField:'_id',as:'application'}},{$unwind:'$application'},{$group:{_id:'$application.contestId',count:{$sum:1},amount:{$sum:'$amount'}}}]),
     ApplicationDocument.aggregate([{$lookup:{from:'applications',localField:'applicationId',foreignField:'_id',as:'application'}},{$unwind:'$application'},{$group:{_id:'$application.contestId',count:{$sum:1}}}])
@@ -101,16 +118,101 @@ const parseDocumentRequirements = value => {
   let items = value;
   if (typeof items === 'string') { try { items = JSON.parse(items); } catch { throw new AppError(422,'INVALID_DOCUMENT_REQUIREMENTS','La liste des documents requis est invalide'); } }
   if (!Array.isArray(items)) throw new AppError(422,'INVALID_DOCUMENT_REQUIREMENTS','La liste des documents requis doit être un tableau');
-  return items.map((item,index)=>({code:normalizeRequirementCode(item.nom||item.name,index),name:String(item.nom||item.name||'').trim(),description:String(item.description||'').trim(),aiValidationInstructions:String(item.aiValidationInstructions||item.ia_indications_validation||'').trim().slice(0,2000),aiRejectionRules:String(item.aiRejectionRules||item.ia_indications_rejet||'').trim().slice(0,2000),required:item.obligatoire!==false&&item.required!==false,acceptedMimeTypes:Array.isArray(item.acceptedMimeTypes)?item.acceptedMimeTypes:['application/pdf','image/jpeg','image/png','image/webp'],maxSizeBytes:Number(item.maxSizeBytes)||10*1024*1024,active:true})).filter(item=>item.name);
+  return items.map((item,index)=>({code:normalizeRequirementCode(item.nom||item.name,index),name:String(item.nom||item.name||'').trim(),description:String(item.description||'').trim(),validationInstructions:String(item.validationInstructions||item.instructions_validation||item.aiValidationInstructions||item.ia_indications_validation||'').trim(),rejectionInstructions:String(item.rejectionInstructions||item.instructions_rejet||item.aiRejectionRules||item.ia_indications_rejet||'').trim(),required:item.obligatoire!==false&&item.required!==false,acceptedMimeTypes:Array.isArray(item.acceptedMimeTypes)?item.acceptedMimeTypes:['application/pdf','image/jpeg','image/png','image/webp'],maxSizeBytes:Number(item.maxSizeBytes)||10*1024*1024,active:true})).filter(item=>item.name);
 };
 const syncDocumentRequirements = async (contestId, value) => {
   const requirements=parseDocumentRequirements(value); if(requirements===null)return;
   await DocumentRequirement.updateMany({contestId},{$set:{active:false}});
   for(const requirement of requirements)await DocumentRequirement.findOneAndUpdate({contestId,programId:null,code:requirement.code},{$set:requirement,$setOnInsert:{contestId}},{upsert:true,new:true,runValidators:true});
 };
-const requirementView = item => ({id:String(item._id),code:item.code,nom:item.name,description:item.description||'',ia_indications_validation:item.aiValidationInstructions||'',ia_indications_rejet:item.aiRejectionRules||'',obligatoire:item.required,acceptedMimeTypes:item.acceptedMimeTypes||[],maxSizeBytes:item.maxSizeBytes});
+const requirementView = item => ({id:String(item._id),code:item.code,nom:item.name,description:item.description||'',instructions_validation:item.validationInstructions||'',instructions_rejet:item.rejectionInstructions||'',obligatoire:item.required,acceptedMimeTypes:item.acceptedMimeTypes||[],maxSizeBytes:item.maxSizeBytes,exemple_document:item.exampleOriginalName?{nom_fichier:item.exampleOriginalName,mime_type:item.exampleMimeType,taille:item.exampleSize}:null});
 router.post('/concours',authenticate,requireSuperAdmin,required('libcnc','etablissement_id','niveau_id','documents_requis'),asyncHandler(async(req,res)=>{const requirements=parseDocumentRequirements(req.body.documents_requis);if(!requirements?.length)throw new AppError(422,'DOCUMENT_REQUIREMENTS_REQUIRED','Définissez au moins un document pour ce concours');const input=await contestInput(req.body);input.slug=`${String(input.title).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}-${crypto.randomBytes(4).toString('hex')}`;const item=await Contest.create(input);await syncDocumentRequirements(item._id,requirements);const result=toLegacyContest(await Contest.findById(item._id).populate('establishmentId educationLevelId programIds').lean());result.documents_requis=(await DocumentRequirement.find({contestId:item._id,active:true}).sort({createdAt:1}).lean()).map(requirementView);ok(res,result,'Concours créé',201);}));
 router.put('/concours/:id',authenticate,requirePermission('manage_applications'),asyncHandler(async(req,res)=>{const current=await Contest.findOne(contestFilter(req.params.id));if(!current)throw new AppError(404,'CONTEST_NOT_FOUND','Concours introuvable');assertContestAccess(req.admin,current);assertContestWritable(current);const update=await contestInput(req.body);if(req.admin.role!=='super_admin'){delete update.establishmentId;delete update.status;}const item=await Contest.findByIdAndUpdate(current._id,{$set:update},{new:true,runValidators:true}).populate('establishmentId educationLevelId programIds').lean();await syncDocumentRequirements(item._id,req.body.documents_requis);const result=toLegacyContest(item);result.documents_requis=(await DocumentRequirement.find({contestId:item._id,active:true}).sort({createdAt:1}).lean()).map(requirementView);ok(res,result,'Concours modifié');}));
+router.put('/document-requirements/:id/example', authenticate, requirePermission('manage_applications'), documentUpload.single('example'), validateUploadedFiles, asyncHandler(async (req, res) => {
+  const requirement = await DocumentRequirement.findById(req.params.id).populate('contestId');
+  if (!requirement) throw new AppError(404, 'DOCUMENT_REQUIREMENT_NOT_FOUND', 'Exigence documentaire introuvable');
+  assertContestAccess(req.admin, requirement.contestId);
+  assertContestWritable(requirement.contestId);
+  if (!req.file) throw new AppError(422, 'EXAMPLE_DOCUMENT_REQUIRED', 'Un document modèle est requis');
+  requirement.exampleStorageKey = `document-examples/${requirement.contestId._id}/${crypto.randomUUID()}`;
+  requirement.exampleContentData = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+  requirement.exampleOriginalName = req.file.originalname;
+  requirement.exampleMimeType = req.file.mimetype;
+  requirement.exampleSize = req.file.size;
+  await requirement.save();
+  ok(res, requirementView(requirement), 'Document modèle enregistré');
+}));
+router.delete('/document-requirements/:id/example', authenticate, requirePermission('manage_applications'), asyncHandler(async (req, res) => {
+  const requirement = await DocumentRequirement.findById(req.params.id).populate('contestId');
+  if (!requirement) throw new AppError(404, 'DOCUMENT_REQUIREMENT_NOT_FOUND', 'Exigence documentaire introuvable');
+  assertContestAccess(req.admin, requirement.contestId);
+  requirement.exampleStorageKey = undefined;
+  requirement.exampleContentData = undefined;
+  requirement.exampleOriginalName = undefined;
+  requirement.exampleMimeType = undefined;
+  requirement.exampleSize = undefined;
+  await requirement.save();
+  ok(res, requirementView(requirement), 'Document modèle supprimé');
+}));
+router.get('/document-requirements/:id/example', asyncHandler(async (req, res) => {
+  const requirement = await DocumentRequirement.findById(req.params.id).select('exampleContentData exampleOriginalName exampleMimeType');
+  if (!requirement?.exampleContentData) throw new AppError(404, 'EXAMPLE_DOCUMENT_NOT_FOUND', 'Document modèle introuvable');
+  const match = /^data:([^;]+);base64,(.*)$/.exec(requirement.exampleContentData);
+  if (!match) throw new AppError(500, 'INVALID_EXAMPLE_DOCUMENT', 'Document modèle illisible');
+  res.type(match[1]).set('Content-Disposition', `inline; filename="${String(requirement.exampleOriginalName || 'exemple').replace(/["\r\n]/g, '_')}"`).send(Buffer.from(match[2], 'base64'));
+}));
+router.post('/admin/ai/backfill', authenticate, requirePermission('validate_documents'), asyncHandler(async (req, res) => {
+  if (!env.geminiApiKey) throw new AppError(503, 'AI_NOT_CONFIGURED', 'GEMINI_API_KEY n’est pas configurée');
+  if (!req.body.contestId) throw new AppError(422, 'CONTEST_REQUIRED', 'Sélectionnez un concours');
+  const contest = await Contest.findOne(contestFilter(req.body.contestId)).lean();
+  if (!contest) throw new AppError(404, 'CONTEST_NOT_FOUND', 'Concours introuvable');
+  assertContestAccess(req.admin, contest);
+  assertContestWritable(contest);
+  const after = req.body.after || null;
+  const before = req.body.before ? new Date(req.body.before) : new Date();
+  if ((after && (typeof after !== 'string' || !/^[a-f0-9]{24}$/i.test(after))) || !Number.isFinite(before.getTime()) || before > new Date()) throw new AppError(422, 'INVALID_AI_CURSOR', 'Paramètres de reprise invalides');
+  try {
+    const result = await require('../services/documentAiBackfillService').processNextDocument(contest._id, after, before);
+    ok(res, { ...result, before: before.toISOString() }, result.done ? 'Traitement terminé' : 'Document traité');
+  } catch (error) {
+    const status = error.response?.status === 429 ? 429 : 502;
+    throw new AppError(status, 'AI_BACKFILL_INTERRUPTED', 'Traitement interrompu : Gemini est indisponible. Vous pouvez reprendre ultérieurement.');
+  }
+}));
+router.post('/admin/ai/chat', authenticate, requirePermission('manage_applications'), asyncHandler(async (req, res) => {
+  if (!env.geminiApiKey) throw new AppError(503, 'AI_NOT_CONFIGURED', 'GEMINI_API_KEY n’est pas configurée');
+  const contest = await Contest.findOne(contestFilter(req.body.contestId)).populate('establishmentId').lean();
+  if (!contest) throw new AppError(404, 'CONTEST_NOT_FOUND', 'Concours introuvable');
+  assertContestAccess(req.admin, contest);
+  const requirements = await DocumentRequirement.find({ contestId: contest._id, active: true }).sort({ createdAt: 1 }).lean();
+  const history = Array.isArray(req.body.history) ? req.body.history.slice(-8) : [];
+  const message = String(req.body.message || '').trim();
+  if (!message) throw new AppError(422, 'AI_MESSAGE_REQUIRED', 'Votre message est vide');
+  const context = requirements.map(item => ({ nom: item.name, description: item.description || '', validation: item.validationInstructions || '', rejet: item.rejectionInstructions || '', modele: item.exampleOriginalName || null }));
+  let response;
+  try {
+    response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.geminiModel)}:generateContent`, {
+      generationConfig: { temperature: 0.2 },
+      systemInstruction: { parts: [{ text: `Tu es l’assistant de configuration documentaire de GabConcours. Tu aides un administrateur à définir des règles contrôlables par IA pour le concours "${contest.title}". Explique clairement tes propositions en français. Tu peux proposer des textes pour validation et rejet, mais ne prétends jamais qu’une IA prouve l’authenticité d’un document. Le contrôle automatique vérifie uniquement la lisibilité, le type, la présence d’informations et la conformité aux règles. Documents actuels : ${JSON.stringify(context)}` }] },
+      contents: [
+        ...history.filter(item => ['user', 'assistant'].includes(item.role)).map(item => ({ role: item.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(item.content || '').slice(0, 4000) }] })),
+        { role: 'user', parts: [{ text: message }] }
+      ]
+    }, { headers: { 'x-goog-api-key': env.geminiApiKey, 'Content-Type': 'application/json' }, timeout: 90000 });
+  } catch (error) {
+    if (['ECONNABORTED', 'ETIMEDOUT'].includes(error.code)) throw new AppError(504, 'AI_TIMEOUT', 'Gemini met trop de temps à répondre. Veuillez réessayer.');
+    const providerStatus = error.response?.status;
+    const providerCode = error.response?.data?.error?.code || error.code || 'UNKNOWN_PROVIDER_ERROR';
+    const providerMessage = error.response?.data?.error?.message || error.message;
+    const status = [400, 401, 403].includes(providerStatus) ? 503 : providerStatus === 429 ? 429 : 502;
+    console.error(JSON.stringify({ level: 'error', code: 'AI_PROVIDER_ERROR', providerStatus, providerCode, model: env.geminiModel, message: providerMessage }));
+    throw new AppError(status, 'AI_PROVIDER_ERROR', `Le service IA a refusé la demande (${providerCode}) : ${String(providerMessage).slice(0, 300)}`);
+  }
+  const candidate = response.data?.candidates?.[0];
+  const answer = candidate?.content?.parts?.filter(part => !part.thought).map(part => part.text || '').join('').trim();
+  if (candidate?.finishReason !== 'STOP' || !answer) throw new AppError(502, 'AI_EMPTY_RESPONSE', 'Gemini n’a pas pu produire de réponse complète. Réessayez.');
+  ok(res, { answer: answer.slice(0, 6000) }, 'Réponse IA générée');
+}));
 router.delete('/concours/:id',authenticate,requireSuperAdmin,asyncHandler(async(req,res)=>{const item=await Contest.findOneAndUpdate(contestFilter(req.params.id),{$set:{status:'archived'}},{new:true});if(!item)throw new AppError(404,'CONTEST_NOT_FOUND','Concours introuvable');ok(res,{id:String(item._id),status:item.status},'Concours archivé');}));
 router.get('/filieres', asyncHandler(async (_req,res)=>ok(res,(await Program.find().lean()).map(p=>({id:p.legacyId||String(p._id),_id:p._id,nomfil:p.name,description:p.description,niveau_id:p.educationLevelId})),'Filières chargées')));
 const contestProgramView = link => ({ id: String(link._id), concours_id: link.contestId?.legacyId || String(link.contestId?._id || link.contestId), filiere_id: link.programId?.legacyId || String(link.programId?._id || link.programId), nomfil: link.programId?.name || '', niveau_id: link.programId?.educationLevelId?.legacyId || link.programId?.educationLevelId?._id, niveau_nomniv: link.programId?.educationLevelId?.name || '', places_disponibles: link.capacity || 0, active: link.active !== false });
@@ -119,7 +221,7 @@ router.post('/concours-filieres', authenticate, requireSuperAdmin, asyncHandler(
 router.put('/concours-filieres/:id', authenticate, requireSuperAdmin, asyncHandler(async(req,res)=>{const link=await ContestProgram.findByIdAndUpdate(req.params.id,{$set:{capacity:Math.max(0,Number(req.body.places_disponibles)||0)}},{new:true,runValidators:true}).populate('contestId programId');if(!link)throw new AppError(404,'CONTEST_PROGRAM_NOT_FOUND','Association concours-filière introuvable');ok(res,contestProgramView(link),'Association mise à jour');}));
 router.post('/concours-filieres/concours/:concoursId/bulk', authenticate, requireSuperAdmin, asyncHandler(async(req,res)=>{if(!Array.isArray(req.body.filieres))throw new AppError(422,'INVALID_PROGRAM_LIST','La liste des filières est invalide');const contest=await Contest.findOne(contestFilter(req.params.concoursId));if(!contest)throw new AppError(404,'CONTEST_NOT_FOUND','Concours introuvable');const resolved=[];for(const input of req.body.filieres){const program=await Program.findOne(idFilter(input.filiere_id)).select('_id');if(!program)throw new AppError(422,'INVALID_PROGRAM',`Filière introuvable : ${input.filiere_id}`);resolved.push({programId:program._id,capacity:Math.max(0,Number(input.places_disponibles)||0)});}await ContestProgram.deleteMany({contestId:contest._id});if(resolved.length)await ContestProgram.insertMany(resolved.map(item=>({contestId:contest._id,programId:item.programId,establishmentId:contest.establishmentId,educationLevelId:contest.educationLevelId,capacity:item.capacity,active:true})));contest.programIds=resolved.map(item=>item.programId);await contest.save();ok(res,{count:resolved.length},`${resolved.length} filière(s) associée(s) au concours`);}));
 router.delete('/concours-filieres/:id', authenticate, requireSuperAdmin, asyncHandler(async(req,res)=>{const link=await ContestProgram.findByIdAndDelete(req.params.id);if(!link)throw new AppError(404,'CONTEST_PROGRAM_NOT_FOUND','Association concours-filière introuvable');await Contest.updateOne({_id:link.contestId},{$pull:{programIds:link.programId}});ok(res,{id:String(link._id)},'Association supprimée');}));
-router.get('/filieres/:id/matieres',asyncHandler(async(req,res)=>{const program=await Program.findOne(idFilter(req.params.id)).populate('educationLevelId').lean();if(!program)throw new AppError(404,'PROGRAM_NOT_FOUND','Filière introuvable');const links=await ProgramSubject.find({programId:program._id}).populate('subjectId').lean();ok(res,{id:program.legacyId||String(program._id),_id:program._id,nomfil:program.name,niveau_id:program.educationLevelId?.legacyId||program.educationLevelId?._id,niveau_nom:program.educationLevelId?.name||'',matieres:links.map(l=>({id:l.subjectId?.legacyId||String(l.subjectId?._id),_id:l.subjectId?._id,nom_matiere:l.subjectId?.name||'',code:l.subjectId?.code||'',coefficient:l.coefficient,obligatoire:l.required}))},'Filière et matières chargées');}));
+router.get('/filieres/:id/matieres',asyncHandler(async(req,res)=>{const program=await Program.findOne(idFilter(req.params.id)).populate('educationLevelId').lean();if(!program)throw new AppError(404,'PROGRAM_NOT_FOUND','Filière introuvable');const contest=req.query.concours_id?await Contest.findOne(contestFilter(req.query.concours_id)).lean():null;if(req.query.concours_id&&!contest)throw new AppError(422,'INVALID_CONTEST','Concours introuvable');const links=await ProgramSubject.find({programId:program._id,contestId:contest?._id||null}).populate('subjectId').lean();ok(res,{id:program.legacyId||String(program._id),_id:program._id,nomfil:program.name,niveau_id:program.educationLevelId?.legacyId||program.educationLevelId?._id,niveau_nom:program.educationLevelId?.name||'',matieres:links.map(l=>({id:l.subjectId?.legacyId||String(l.subjectId?._id),_id:l.subjectId?._id,nom_matiere:l.subjectId?.name||'',code:l.subjectId?.code||'',coefficient:l.coefficient,obligatoire:l.required}))},'Filière et matières chargées');}));
 router.get('/filiere-matieres/filiere/:filiereId', authenticate, asyncHandler(async(req,res)=>{const program=await Program.findOne(idFilter(req.params.filiereId));if(!program)throw new AppError(404,'PROGRAM_NOT_FOUND','Filière introuvable');const links=await ProgramSubject.find({programId:program._id, ...(req.query.concours_id?{contestId:contestFilter(req.query.concours_id)}:{})}).populate('subjectId').lean();ok(res,links.map(link=>({id:String(link._id),filiere_id:program.legacyId||String(program._id),matiere_id:link.subjectId?.legacyId||String(link.subjectId?._id),nom_matiere:link.subjectId?.name||'',coefficient:link.coefficient,obligatoire:link.required})),'Matières de la filière chargées');}));
 router.get('/filiere-matieres/coefficients/:filiereId', authenticate, asyncHandler(async(req,res)=>{const program=await Program.findOne(idFilter(req.params.filiereId)).select('_id');if(!program)throw new AppError(404,'PROGRAM_NOT_FOUND','Filière introuvable');const links=await ProgramSubject.find({programId:program._id});ok(res,{total_coefficients:links.reduce((sum,item)=>sum+Number(item.coefficient||0),0),nombre_matieres:links.length,matieres_obligatoires:links.filter(item=>item.required).length},'Coefficients calculés');}));
 router.post('/filiere-matieres', authenticate, requireSuperAdmin, asyncHandler(async(req,res)=>{const program=await Program.findOne(idFilter(req.body.filiere_id));const subject=await Subject.findOne(idFilter(req.body.matiere_id));if(!program||!subject)throw new AppError(422,'INVALID_PROGRAM_SUBJECT','Filière ou matière introuvable');const contestId=req.body.concours_id? (await Contest.findOne(contestFilter(req.body.concours_id)))?._id : undefined;const link=await ProgramSubject.findOneAndUpdate({programId:program._id,subjectId:subject._id,contestId:contestId||null},{programId:program._id,subjectId:subject._id,contestId,coefficient:Number(req.body.coefficient)||1,required:req.body.obligatoire!==false},{upsert:true,new:true,runValidators:true}).populate('subjectId');ok(res,{id:String(link._id),filiere_id:program.legacyId||String(program._id),matiere_id:subject.legacyId||String(subject._id),nom_matiere:subject.name,coefficient:link.coefficient,obligatoire:link.required},'Matière associée à la filière',201);}));
@@ -264,6 +366,8 @@ router.delete('/subadmins/:id', authenticate, requireSubAdminManager, asyncHandl
   ok(res, { id: String(admin._id) }, 'Sous-administrateur désactivé');
 }));
 router.get('/messages/admin',authenticate,requirePermission('manage_messages'),asyncHandler(async(req,res)=>{const query={};const ids=await scopedApplicationIds(req.admin);if(ids)query.applicationId={$in:ids};if(req.query.nupcan)query.legacyNupcan=String(req.query.nupcan);const items=await Message.find(query).populate('candidateId administratorId applicationId').sort({createdAt:-1}).limit(200).lean();ok(res,items.map(m=>({id:String(m._id),legacyId:m.legacyId,candidat_nupcan:m.applicationId?.nupcan||m.legacyNupcan||'',admin_id:m.administratorId?.legacyId,sujet:m.subject||'',message:m.body,expediteur:m.senderType==='administrator'?'admin':'candidat',statut:m.readAt?'lu':'non_lu',created_at:m.createdAt,updated_at:m.updatedAt,nomcan:m.candidateId?.lastName||'',prncan:m.candidateId?.firstName||'',maican:m.candidateId?.email||'',admin_nom:m.administratorId?.lastName||'',admin_prenom:m.administratorId?.firstName||''})),'Messages chargés');}));
+router.post('/messages/admin',authenticate,requirePermission('manage_messages'),required('nupcan','message'),asyncHandler(async(req,res)=>{const application=await scopedApplication(req.admin,req.body.nupcan);const body=String(req.body.message).trim();if(!body)throw new AppError(422,'MESSAGE_REQUIRED','Le message est obligatoire');const item=await Message.create({applicationId:application._id,candidateId:application.candidateId._id,administratorId:req.admin._id,legacyNupcan:application.nupcan,subject:String(req.body.sujet||'Réponse de l’administration').trim(),body,senderType:'administrator'});await Notification.create({candidateId:application.candidateId._id,applicationId:application._id,legacyNupcan:application.nupcan,title:'Nouveau message de l’administration',body:item.body,channel:'in_app'});ok(res,messageView(await item.populate('administratorId')),'Message envoyé',201);}));
+router.put('/messages/:id/marquer-lu',authenticate,requirePermission('manage_messages'),asyncHandler(async(req,res)=>{const item=await Message.findById(req.params.id).populate('applicationId');if(!item)throw new AppError(404,'MESSAGE_NOT_FOUND','Message introuvable');await scopedApplication(req.admin,item.applicationId._id);item.readAt=new Date();await item.save();ok(res,messageView(item),'Message marqué comme lu');}));
 const adminView=a=>({id:String(a._id),legacyId:a.legacyId,nom:a.lastName,prenom:a.firstName,email:a.email,role:a.role,admin_role:a.subAdminRole||(a.role==='finance'?'paiements':'documents'),subAdminRole:a.subAdminRole,permissions:effectivePermissions(a),etablissement_id:a.establishmentIds?.[0]?.legacyId||a.establishmentIds?.[0]?._id,etablissement_object_id:a.establishmentIds?.[0]?._id,etablissement_nom:a.establishmentIds?.[0]?.name||'',statut:a.active?'actif':'inactif',active:a.active,derniere_connexion:a.lastLoginAt,created_at:a.createdAt});
 router.get('/admin/management/admins',authenticate,requireSuperAdmin,asyncHandler(async(_req,res)=>ok(res,(await Administrator.find().populate('establishmentIds').sort({createdAt:-1}).lean()).map(adminView),'Administrateurs chargés')));
 router.post('/admin/management/admins',authenticate,requireSuperAdmin,required('email'),asyncHandler(async(req,res)=>{
@@ -301,7 +405,9 @@ router.post('/candidats', candidatePhotoUpload.single('phtcan'), validateUploade
   if(!contest||!program)throw new AppError(422,'INVALID_SELECTION','Concours ou filière introuvable');
   if(contest.programIds?.length&&!contest.programIds.some(id=>String(id)===String(program._id)))throw new AppError(422,'PROGRAM_NOT_AVAILABLE','Cette filière ne fait pas partie du concours');
   const photoData=req.file?`data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`:undefined;
-  const existingCandidate=req.body.nipcan?await Candidate.findOne({nipcan:String(req.body.nipcan).trim().toUpperCase()}):null;
+  const existingCandidate=req.candidate;
+  if(req.body.nipcan && String(req.body.nipcan).trim().toUpperCase() !== existingCandidate.nipcan) throw new AppError(403,'CANDIDATE_FORBIDDEN','Ce NIPCAN ne correspond pas à votre compte');
+  if(req.body.maican && String(req.body.maican).trim().toLowerCase() !== existingCandidate.email) throw new AppError(422,'ACCOUNT_EMAIL_MISMATCH','Utilisez l’adresse email vérifiée de votre compte');
   if(req.body.nipcan&&!existingCandidate)throw new AppError(404,'CANDIDATE_NOT_FOUND','Aucun candidat ne correspond à ce NIPCAN');
   if(existingCandidate){
     const duplicateApplication=await Application.findOne({candidateId:existingCandidate._id,contestId:contest._id}).select('nupcan').lean();
@@ -347,8 +453,9 @@ router.post('/candidats', candidatePhotoUpload.single('phtcan'), validateUploade
   }
   ok(res,{id:String(application.candidateId),nupcan:application.nupcan,nipcan:candidate.nipcan,concours_id:contest.legacyId||String(contest._id),filiere_id:program.legacyId||String(program._id),nomcan:req.body.nomcan,prncan:req.body.prncan,maican:req.body.maican||'',dtncan:req.body.dtncan||'',telcan:req.body.telcan,ldncan:req.body.ldncan||'',phtcan:candidate.photoData||null,niveau_id:req.body.niveau_id||null,proorg:originProvince?.legacyId||req.body.proorg||null,proact:currentProvince?.legacyId||req.body.proact||null,proaff:assignedProvince?.legacyId||req.body.proaff||null,created_at:application.createdAt,updated_at:application.updatedAt,delivery:{emailSent}},emailSent?'Candidature créée et identifiants envoyés par email':"Candidature créée, mais l'email n'a pas pu être envoyé",201);
 }));
-router.post('/candidats/nipcan/verify', required('nipcan'), asyncHandler(async (req, res) => {
+router.post('/candidats/nipcan/verify', authenticateCandidate, required('nipcan'), asyncHandler(async (req, res) => {
   const nipcan = String(req.body.nipcan).trim().toUpperCase();
+  if (nipcan !== req.candidate.nipcan) throw new AppError(403, 'CANDIDATE_FORBIDDEN', 'Ce NIPCAN ne correspond pas à votre compte');
   const candidate = await Candidate.findOne({ nipcan }).lean();
   if (!candidate) throw new AppError(404, 'CANDIDATE_NOT_FOUND', 'NIPCAN invalide. Aucun candidat trouvé avec cet identifiant.');
   ok(res, { id: String(candidate._id), nipcan: candidate.nipcan, nom: candidate.lastName, prenom: candidate.firstName, maican: candidate.email || '' }, 'NIPCAN valide');
@@ -366,11 +473,14 @@ router.get('/candidats/nipcan/:nipcan/dashboard', asyncHandler(async (req, res) 
     ApplicationDocument.find({ applicationId: { $in: applicationIds } }).lean(),
     Payment.find({ applicationId: { $in: applicationIds } }).sort({ createdAt: -1 }).lean()
   ]);
+  const requirements = await DocumentRequirement.find({ contestId: { $in: applications.map(application => application.contestId?._id).filter(Boolean) }, active: true, required: true }).select('contestId programId').lean();
   const candidatures = applications.map(application => {
     const applicationDocuments = documents.filter(document => String(document.applicationId) === String(application._id));
     const validDocuments = applicationDocuments.filter(document => document.status === 'approved').length;
+    const requiredDocuments = requirements.filter(requirement => String(requirement.contestId) === String(application.contestId?._id) && (!requirement.programId || String(requirement.programId) === String(application.programId?._id)));
+    const submittedDocuments = new Set(applicationDocuments.filter(document => document.requirementId).map(document => String(document.requirementId))).size;
     const payment = payments.find(item => String(item.applicationId) === String(application._id));
-    const documentsComplete = applicationDocuments.length > 0 && validDocuments === applicationDocuments.length;
+    const documentsComplete = submittedDocuments >= requiredDocuments.length;
     const paymentComplete = payment?.status === 'paid';
     const resultAvailable = ['approved', 'rejected'].includes(application.status);
     const completed = [true, documentsComplete, paymentComplete, resultAvailable].filter(Boolean).length;
@@ -382,6 +492,8 @@ router.get('/candidats/nipcan/:nipcan/dashboard', asyncHandler(async (req, res) 
       progression: completed * 25,
       created_at: application.createdAt,
       documents_count: applicationDocuments.length,
+      documents_requis: requiredDocuments.length,
+      documents_deposes: submittedDocuments,
       documents_valides: validDocuments,
       paiement_statut: payment ? legacyPaymentStatus(payment.status) : null,
       etapes: { inscription: true, documents: documentsComplete, paiement: paymentComplete, resultats: resultAvailable }
@@ -393,15 +505,15 @@ router.get('/candidats/nipcan/:nipcan/dashboard', asyncHandler(async (req, res) 
     statistiques: { total: candidatures.length, en_cours: applications.filter(application => ['draft', 'submitted', 'under_review'].includes(application.status)).length, completes: applications.filter(application => application.status === 'approved').length }
   }, 'Dashboard candidat chargé');
 }));
-router.get('/candidats/nip/:nip',asyncHandler(async(req,res)=>{
-  const c=await Candidate.findOne({nipcan:String(req.params.nip).trim().toUpperCase()}).lean();
+router.get('/candidats/nip/:nip', nipLookupLimiter, asyncHandler(async(req,res)=>{
+  const c=await Candidate.findOne({nipcan:String(req.params.nip).trim().toUpperCase()}).populate('originProvinceId currentProvinceId assignedProvinceId').lean();
   if(!c)throw new AppError(404,'CANDIDATE_NOT_FOUND','Candidat introuvable avec ce NIPCAN');
   const application=await Application.findOne({candidateId:c._id}).sort({createdAt:-1}).populate('contestId').populate('programId').lean();
-  ok(res,{id:String(c._id),nupcan:application?.nupcan||'',nipcan:c.nipcan,concours_id:application?.contestId?.legacyId||String(application?.contestId?._id||''),filiere_id:application?.programId?.legacyId||String(application?.programId?._id||''),nomcan:c.lastName,prncan:c.firstName,maican:c.email||'',telcan:c.phone,dtncan:c.birthDate,ldncan:c.birthPlace||'',phtcan:c.photoData||null,proorg:c.originProvinceId,proact:c.currentProvinceId,proaff:c.assignedProvinceId,statut:application?.status||'',created_at:c.createdAt,updated_at:c.updatedAt},'Candidat chargé');
+  ok(res,{id:String(c._id),nupcan:application?.nupcan||'',nipcan:c.nipcan,concours_id:application?.contestId?.legacyId||String(application?.contestId?._id||''),filiere_id:application?.programId?.legacyId||String(application?.programId?._id||''),nomcan:c.lastName,prncan:c.firstName,maican:c.email||'',telcan:c.phone,dtncan:c.birthDate,ldncan:c.birthPlace||'',phtcan:c.photoData||null,proorg:c.originProvinceId?.legacyId||c.originProvinceId?._id||c.originProvinceId,proact:c.currentProvinceId?.legacyId||c.currentProvinceId?._id||c.currentProvinceId,proaff:c.assignedProvinceId?.legacyId||c.assignedProvinceId?._id||c.assignedProvinceId,statut:application?.status||'',created_at:c.createdAt,updated_at:c.updatedAt},'Candidat chargé');
 }));
 // Lecture publique limitée aux données nécessaires au parcours candidat. Le NUPCAN
 // est le secret de suivi; cette route ne retourne jamais les données administrateur.
-router.get('/candidats/nupcan/:nupcan',asyncHandler(async(req,res)=>{const application=await Application.findOne({nupcan:String(req.params.nupcan).trim().toUpperCase()}).populate('candidateId').populate('contestId').populate('programId').lean();if(!application||!application.candidateId)throw new AppError(404,'CANDIDATE_NOT_FOUND','Candidat introuvable');const c=application.candidateId;ok(res,{id:String(c._id),nupcan:application.nupcan,nipcan:c.nipcan||'',concours_id:application.contestId?.legacyId||String(application.contestId?._id),filiere_id:application.programId?.legacyId||String(application.programId?._id),nomcan:c.lastName,prncan:c.firstName,maican:c.email||'',telcan:c.phone,dtncan:c.birthDate,ldncan:c.birthPlace||'',phtcan:c.photoData||null,proorg:c.originProvinceId,proact:c.currentProvinceId,proaff:c.assignedProvinceId,statut:legacyApplicationStatus(application.status),created_at:c.createdAt,updated_at:c.updatedAt},'Candidat chargé');}));
+router.get('/candidats/nupcan/:nupcan',asyncHandler(async(req,res)=>{const application=await Application.findOne({nupcan:String(req.params.nupcan).trim().toUpperCase()}).populate('candidateId').populate('contestId').populate('programId').lean();if(!application||!application.candidateId)throw new AppError(404,'CANDIDATE_NOT_FOUND','Candidat introuvable');const c=application.candidateId;ok(res,{id:String(c._id),nupcan:application.nupcan,nipcan:c.nipcan||'',concours_id:application.contestId?.legacyId||String(application.contestId?._id),filiere_id:application.programId?.legacyId||String(application.programId?._id),nomcan:c.lastName,prncan:c.firstName,maican:c.email||'',telcan:c.phone,dtncan:c.birthDate,ldncan:c.birthPlace||'',phtcan:c.photoData||null,proorg:c.originProvinceId?.legacyId||c.originProvinceId?._id||c.originProvinceId,proact:c.currentProvinceId?.legacyId||c.currentProvinceId?._id||c.currentProvinceId,proaff:c.assignedProvinceId?.legacyId||c.assignedProvinceId?._id||c.assignedProvinceId,statut:legacyApplicationStatus(application.status),created_at:c.createdAt,updated_at:c.updatedAt},'Candidat chargé');}));
 router.get('/candidats/nupcan/:nupcan/nipcan', asyncHandler(async (req, res) => { const application = await Application.findOne({ nupcan: String(req.params.nupcan).toUpperCase() }).populate('candidateId').lean(); if (!application?.candidateId?.nipcan) throw new AppError(404, 'CANDIDATE_NOT_FOUND', 'NIPCAN introuvable pour cette candidature'); ok(res, { nipcan: application.candidateId.nipcan, nupcan: application.nupcan }, 'NIPCAN trouvé'); }));
 const documentView = d => { const statut=legacyDocumentStatus(d.status); return { id: String(d._id), document_id: String(d._id), requirement_id: d.requirementId ? String(d.requirementId) : null, nomdoc: d.type, nom_fichier: d.originalName || d.safeName, chemin_fichier: d.storageKey, type: d.type, mime_type:d.mimeType, version:d.version||1, obligatoire: d.required, taille: d.size, statut, document_statut:statut, commentaire_validation: d.rejectionReason || '', ai_status: d.aiStatus || 'disabled', ai_recommendation: d.aiRecommendation || null, ai_confidence: d.aiConfidence ?? null, ai_reason: d.aiReason || '', created_at: d.createdAt, updated_at: d.updatedAt }; };
 router.use('/documents/:id',asyncHandler(async(req,_res,next)=>{if(['GET','HEAD'].includes(req.method))return next();const document=await ApplicationDocument.findById(req.params.id).populate({path:'applicationId',populate:{path:'contestId'}});if(!document)throw new AppError(404,'DOCUMENT_NOT_FOUND','Document introuvable');assertContestWritable(document.applicationId?.contestId);next();}));
@@ -443,17 +555,28 @@ router.put('/document-validation/:id', authenticate, requirePermission('validate
   if (!existing) throw new AppError(404, 'DOCUMENT_NOT_FOUND', 'Document introuvable');
   assertContestAccess(req.admin, existing.applicationId.contestId); assertContestWritable(existing.applicationId.contestId);
   const document = await ApplicationDocument.findByIdAndUpdate(req.params.id, { $set: { status, rejectionReason: status === 'rejected' ? String(req.body.commentaire || '').trim() : undefined } }, { new: true, runValidators: true }).lean();
-  await Notification.create({
-    candidateId: existing.applicationId.candidateId,
-    applicationId: existing.applicationId._id,
-    legacyNupcan: existing.applicationId.nupcan,
-    title: status === 'approved' ? 'Document validé' : 'Document rejeté',
-    body: status === 'approved'
-      ? `Votre document « ${existing.type || 'document'} » a été validé.`
-      : `Votre document « ${existing.type || 'document'} » a été rejeté. ${String(req.body.commentaire || '').trim()}`,
-    channel: 'in_app'
-  });
+  await Notification.create({candidateId:existing.applicationId.candidateId,applicationId:existing.applicationId._id,legacyNupcan:existing.applicationId.nupcan,title:status==='approved'?'Document validé':'Document rejeté',body:status==='approved'?`Votre document « ${existing.type||'document'} » a été validé.`:`Votre document « ${existing.type||'document'} » a été rejeté. ${String(req.body.commentaire||'').trim()}`,channel:'in_app'});
   ok(res, documentView(document), 'Statut du document mis à jour');
+}));
+router.post('/email/receipt', asyncHandler(async(req,res)=>{
+  const data=req.body?.candidatData||{};
+  const candidate=data.candidat||data;
+  const concours=data.concours||{};
+  const maican=String(req.body?.maican||candidate.maican||'').trim().toLowerCase();
+  const nupcan=String(req.body?.nupcan||candidate.nupcan||'').trim().toUpperCase();
+  if(!maican||!maican.includes('@'))throw new AppError(422,'EMAIL_REQUIRED','Adresse email invalide');
+  if(!nupcan)throw new AppError(422,'NUPCAN_REQUIRED','NUPCAN manquant');
+  await emailService.sendReceiptEmail({maican,nupcan,prncan:candidate.prncan||candidate.firstName||'',nomcan:candidate.nomcan||candidate.lastName||'',libcnc:concours.libcnc||concours.title||''},req.body?.pdfAttachment?{content:req.body.pdfAttachment,filename:`Recu_Candidature_${nupcan}.pdf`}:undefined);
+  ok(res,{success:true},'Reçu envoyé par email');
+}));
+router.post('/email/document-validation', asyncHandler(async(req,res)=>{
+  const candidat=req.body?.candidat||{};
+  const document=req.body?.document||{};
+  const maican=String(candidat.maican||req.body?.to||'').trim().toLowerCase();
+  if(!maican||!maican.includes('@'))throw new AppError(422,'EMAIL_REQUIRED','Adresse email invalide');
+  if(!document.nomdoc&&!document.nom)throw new AppError(422,'DOCUMENT_REQUIRED','Document manquant');
+  await emailService.sendDocumentValidationEmail({maican,documentName:document.nomdoc||document.nom,statut:req.body.statut,commentaire:req.body.commentaire});
+  ok(res,{success:true},'Notification envoyée par email');
 }));
 router.patch('/documents/:id', required('nomdoc'), asyncHandler(async(req,res)=>{const item=await ApplicationDocument.findById(req.params.id);if(!item)throw new AppError(404,'DOCUMENT_NOT_FOUND','Document introuvable');if(item.requirementId)throw new AppError(409,'REQUIRED_DOCUMENT_LOCKED','Le libellé d’une pièce exigée est défini par le concours');item.type=String(req.body.nomdoc).trim();if(!item.type)throw new AppError(422,'VALIDATION_ERROR','Le nom du document est obligatoire');await item.save();ok(res,documentView(item),'Document modifié');}));
 router.delete('/documents/:id', asyncHandler(async(req,res)=>{const item=await ApplicationDocument.findByIdAndDelete(req.params.id);if(!item)throw new AppError(404,'DOCUMENT_NOT_FOUND','Document introuvable');ok(res,{id:String(item._id)},'Document supprimé');}));
@@ -461,13 +584,14 @@ router.get('/documents/:id/download', asyncHandler(async(req,res)=>{const item=a
 const applicationByNupcan = nupcan => Application.findOne({ nupcan: String(nupcan).trim().toUpperCase() }).lean();
 const notificationView = item => ({ id: String(item._id), titre: item.title || 'Notification', message: item.body || '', type: item.channel || 'information', statut: item.readAt ? 'lu' : 'non_lu', created_at: item.createdAt });
 router.get('/notifications/unread',authenticate,asyncHandler(async(req,res)=>{const items=await Notification.find({recipientAdministratorId:req.admin._id,readAt:null}).sort({createdAt:-1}).limit(50).lean();ok(res,items.map(item=>({...notificationView(item),link:'/admin/dossiers'})),'Notifications administrateur chargées');}));
-router.get('/notifications/candidat/:nupcan', asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const items=await Notification.find({recipientAdministratorId:{$exists:false},$or:[{applicationId:application._id},{candidateId:application.candidateId},{legacyNupcan:application.nupcan}]}).sort({createdAt:-1}).lean();ok(res,items.map(notificationView),'Notifications chargées');}));
-router.put('/notifications/:id/read', asyncHandler(async(req,res)=>{const item=await Notification.findByIdAndUpdate(req.params.id,{$set:{readAt:new Date()}},{new:true}).lean();if(!item)throw new AppError(404,'NOTIFICATION_NOT_FOUND','Notification introuvable');ok(res,notificationView(item),'Notification lue');}));
-router.delete('/notifications/:id', asyncHandler(async(req,res)=>{const item=await Notification.findByIdAndDelete(req.params.id);if(!item)throw new AppError(404,'NOTIFICATION_NOT_FOUND','Notification introuvable');ok(res,{id:String(item._id)},'Notification supprimée');}));
-router.delete('/notifications/candidat/:nupcan', asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const result=await Notification.deleteMany({$or:[{applicationId:application._id},{candidateId:application.candidateId},{legacyNupcan:application.nupcan}]});ok(res,{deletedCount:result.deletedCount},'Notifications supprimées');}));
+router.get('/notifications/candidat/:nupcan', authenticateCandidate, asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application||String(application.candidateId)!==String(req.candidate._id))throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const items=await Notification.find({recipientAdministratorId:{$exists:false},$or:[{applicationId:application._id},{candidateId:application.candidateId},{legacyNupcan:application.nupcan}]}).sort({createdAt:-1}).lean();ok(res,items.map(notificationView),'Notifications chargées');}));
+router.put('/notifications/:id/read', authenticateCandidate, asyncHandler(async(req,res)=>{const item=await Notification.findOneAndUpdate({_id:req.params.id,candidateId:req.candidate._id,recipientAdministratorId:{$exists:false}},{$set:{readAt:new Date()}},{new:true}).lean();if(!item)throw new AppError(404,'NOTIFICATION_NOT_FOUND','Notification introuvable');ok(res,notificationView(item),'Notification lue');}));
+router.delete('/notifications/:id', authenticateCandidate, asyncHandler(async(req,res)=>{const item=await Notification.findOneAndDelete({_id:req.params.id,candidateId:req.candidate._id,recipientAdministratorId:{$exists:false}});if(!item)throw new AppError(404,'NOTIFICATION_NOT_FOUND','Notification introuvable');ok(res,{id:String(item._id)},'Notification supprimée');}));
+router.delete('/notifications/candidat/:nupcan', authenticateCandidate, asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application||String(application.candidateId)!==String(req.candidate._id))throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const result=await Notification.deleteMany({candidateId:req.candidate._id,recipientAdministratorId:{$exists:false},$or:[{applicationId:application._id},{legacyNupcan:application.nupcan}]});ok(res,{deletedCount:result.deletedCount},'Notifications supprimées');}));
 const messageView = item => ({id:String(item._id),sujet:item.subject||'',message:item.body,expediteur:item.senderType==='administrator'?'admin':'candidat',statut:item.readAt?'lu':'non_lu',created_at:item.createdAt,admin_nom:item.administratorId?.lastName||'',admin_prenom:item.administratorId?.firstName||''});
-router.get('/messages/candidat/:nupcan', asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const items=await Message.find({$or:[{applicationId:application._id},{legacyNupcan:application.nupcan}]}).populate('administratorId').sort({createdAt:1}).lean();ok(res,items.map(messageView),'Messages chargés');}));
-router.post('/messages/candidat', required('nupcan','message'), asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.body.nupcan);if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const item=await Message.create({applicationId:application._id,candidateId:application.candidateId,legacyNupcan:application.nupcan,subject:String(req.body.sujet||'Sans objet').trim(),body:String(req.body.message).trim(),senderType:'candidate'});ok(res,messageView(item),'Message envoyé',201);}));
+router.get('/messages/candidat/:nupcan', authenticateCandidate, asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application||String(application.candidateId)!==String(req.candidate._id))throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const items=await Message.find({$or:[{applicationId:application._id},{legacyNupcan:application.nupcan}]}).populate('administratorId').sort({createdAt:1}).lean();ok(res,items.map(messageView),'Messages chargés');}));
+router.post('/messages/candidat', authenticateCandidate, required('nupcan','message'), asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.body.nupcan);if(!application||String(application.candidateId)!==String(req.candidate._id))throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const body=String(req.body.message).trim();if(!body)throw new AppError(422,'MESSAGE_REQUIRED','Le message est obligatoire');const item=await Message.create({applicationId:application._id,candidateId:application.candidateId,legacyNupcan:application.nupcan,subject:String(req.body.sujet||'Sans objet').trim(),body,senderType:'candidate'});ok(res,messageView(item),'Message envoyé',201);}));
+router.put('/notifications/candidat/:nupcan/read-all', authenticateCandidate, asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application||String(application.candidateId)!==String(req.candidate._id))throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const result=await Notification.updateMany({candidateId:req.candidate._id,recipientAdministratorId:{$exists:false},$or:[{applicationId:application._id},{legacyNupcan:application.nupcan}],readAt:null},{$set:{readAt:new Date()}});ok(res,{modifiedCount:result.modifiedCount},'Notifications marquées comme lues');}));
 router.get('/grades/candidat/:nupcan', asyncHandler(async(req,res)=>{const application=await applicationByNupcan(req.params.nupcan);if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const grades=await Grade.find({applicationId:application._id}).populate('subjectId').lean();const notes=grades.map(grade=>({id:String(grade._id),note:grade.score,nommat:grade.subjectId?.name||'',coefmat:grade.coefficient||1}));const coefficientTotal=notes.reduce((sum,note)=>sum+note.coefmat,0);const moyenneGenerale=coefficientTotal?Number((notes.reduce((sum,note)=>sum+note.note*note.coefmat,0)/coefficientTotal).toFixed(2)):null;ok(res,{notes,moyenneGenerale},'Notes chargées');}));
 router.get('/matieres', authenticate, requirePermission('enter_grades'), asyncHandler(async(_req,res)=>ok(res,(await Subject.find().sort({name:1}).lean()).map(subject=>({id:subject.legacyId||String(subject._id),_id:String(subject._id),nom_matiere:subject.name,coefficient:subject.coefficient||1})),'Matières chargées')));
 router.get('/notes/candidat/:candidateId/concours/:contestId', authenticate, requirePermission('enter_grades'), asyncHandler(async(req,res)=>{const [candidate,contest]=await Promise.all([Candidate.findOne(idFilter(req.params.candidateId)).lean(),Contest.findOne(idFilter(req.params.contestId)).lean()]);if(!candidate||!contest)throw new AppError(404,'SELECTION_NOT_FOUND','Candidat ou concours introuvable');const application=await Application.findOne({candidateId:candidate._id,contestId:contest._id}).lean();if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const grades=await Grade.find({applicationId:application._id}).populate('subjectId').lean();const notes=grades.map(grade=>({id:String(grade._id),matiere_id:grade.subjectId?.legacyId||String(grade.subjectId?._id),nom_matiere:grade.subjectId?.name||'',note:grade.score,coefficient:grade.coefficient||1}));const total=notes.reduce((sum,note)=>sum+note.coefficient,0);ok(res,{notes,moyenne:total?(notes.reduce((sum,note)=>sum+note.note*note.coefficient,0)/total).toFixed(2):null},'Notes chargées');}));
@@ -477,6 +601,33 @@ router.post('/paiements',authenticationLimiter,required('nupcan','methode'),asyn
 router.get('/paiements',authenticate,requirePermission('view_payments'),asyncHandler(async(req,res)=>{const ids=await scopedApplicationIds(req.admin);const items=await Payment.find(ids?{applicationId:{$in:ids}}:{}).populate('candidateId').populate({path:'applicationId',populate:[{path:'contestId'},{path:'programId'}]}).sort({createdAt:-1}).lean();ok(res,items.map(p=>({id:String(p._id),legacyId:p.legacyId,candidat_nom:p.candidateId?`${p.candidateId.firstName} ${p.candidateId.lastName}`.trim():'',candidat_email:p.candidateId?.email||'',nupcan:p.applicationId?.nupcan||'',concours:p.applicationId?.contestId?.title||'',filiere:p.applicationId?.programId?.name||'',reference:p.paymentReference,transaction_id:p.transactionId,montant:p.amount,devise:p.currency,methode:p.provider,statut:{paid:'valide',pending:'en_attente',processing:'en_attente',failed:'rejete',cancelled:'rejete',refunded:'rembourse'}[p.status]||p.status,date_paiement:p.createdAt,created_at:p.createdAt})),'Paiements complets chargés');}));
 router.use('/paiements/:id/status',authenticate,asyncHandler(async(req,_res,next)=>{const payment=await Payment.findById(req.params.id).populate({path:'applicationId',populate:{path:'contestId'}});if(!payment)throw new AppError(404,'PAYMENT_NOT_FOUND','Paiement introuvable');assertContestAccess(req.admin,payment.applicationId.contestId);assertContestWritable(payment.applicationId.contestId);next();}));
 router.patch('/paiements/:id/status',authenticate,requirePermission('manage_payments'),asyncHandler(async(req,res)=>{const status={valide:'paid',rejete:'failed',en_attente:'pending'}[req.body.statut]||req.body.status;if(!['paid','failed','pending','processing','cancelled','refunded'].includes(status))throw new AppError(422,'INVALID_PAYMENT_STATUS','Statut de paiement invalide');const item=await Payment.findByIdAndUpdate(req.params.id,{$set:{status}},{new:true,runValidators:true});if(!item)throw new AppError(404,'PAYMENT_NOT_FOUND','Paiement introuvable');ok(res,{id:String(item._id),statut:item.status},'Statut du paiement modifié');}));
+router.get('/applications/:nupcan/payment-eligibility', asyncHandler(async (req, res) => {
+  const nupcan = String(req.params.nupcan).trim().toUpperCase();
+  const application = await Application.findOne({ nupcan }).populate('candidateId contestId programId').lean();
+  if (!application) throw new AppError(404, 'APPLICATION_NOT_FOUND', 'Candidature introuvable');
+  const [requirements, documents, payment] = await Promise.all([
+    DocumentRequirement.find({ contestId: application.contestId._id, active: true, required: true, $or: [{ programId: null }, { programId: application.programId?._id }] }).select('_id').lean(),
+    ApplicationDocument.find({ applicationId: application._id }).select('requirementId status').lean(),
+    Payment.findOne({ applicationId: application._id }).sort({ createdAt: -1 }).lean()
+  ]);
+  // Le paiement dépend du dépôt des pièces, pas de leur validation administrative.
+  const submitted = new Set(documents.filter(document => document.requirementId).map(document => String(document.requirementId)));
+  const missing = requirements.filter(requirement => !submitted.has(String(requirement._id))).length;
+  const alreadyPaid = payment?.status === 'paid';
+  const candidate = application.candidateId || {};
+  const contest = application.contestId || {};
+  ok(res, {
+    eligible: missing === 0 && !alreadyPaid,
+    missing,
+    alreadyPaid,
+    payment: payment ? { id: String(payment._id), montant: payment.amount, statut: legacyPaymentStatus(payment.status), methode: payment.provider } : null,
+    paymentContext: {
+      nupcan: application.nupcan,
+      candidat: { id: String(candidate._id || ''), nomcan: candidate.lastName || '', prncan: candidate.firstName || '', maican: candidate.email || '', telcan: candidate.phone || '' },
+      concours: { id: contest.legacyId || String(contest._id || ''), libcnc: contest.title || '', fracnc: contest.fee || 0, agecnc: contest.maximumAge || 0, debcnc: contest.opensAt || '', fincnc: contest.closesAt || '' }
+    }
+  }, 'Eligibilité au paiement chargée');
+}));
 router.use('/applications/:nupcan',asyncHandler(async(req,_res,next)=>{if(req.method!=='PATCH')return next();const application=await Application.findOne({nupcan:String(req.params.nupcan).toUpperCase()}).populate('contestId');if(application)assertContestWritable(application.contestId);next();}));
 router.post('/applications', required('contestId','programId','candidate.firstName','candidate.lastName','candidate.phone'), asyncHandler(async (req, res) => ok(res, await createApplication(req.body), 'Brouillon créé', 201)));
 router.get('/applications/:nupcan', asyncHandler(async (req, res) => { const item = await Application.findOne({ nupcan: req.params.nupcan.toUpperCase() }).populate('candidateId contestId programId').lean(); if (!item) throw new AppError(404, 'APPLICATION_NOT_FOUND', 'Candidature introuvable'); ok(res, item); }));
@@ -490,6 +641,7 @@ router.delete('/admin/applications/:id',authenticate,requirePermission('manage_a
 router.put('/admin/grades/:id',authenticate,requirePermission('enter_grades'),required('score'),asyncHandler(async(req,res)=>{const grade=await Grade.findById(req.params.id).populate({path:'applicationId',populate:{path:'contestId'}});if(!grade)throw new AppError(404,'GRADE_NOT_FOUND','Note introuvable');assertContestAccess(req.admin,grade.applicationId.contestId);assertContestWritable(grade.applicationId.contestId);const score=Number(req.body.score);if(!Number.isFinite(score)||score<0||score>grade.maximumScore)throw new AppError(422,'INVALID_GRADE','Note invalide');grade.score=score;grade.enteredBy=req.admin._id;grade.validatedAt=undefined;grade.validatedBy=undefined;await grade.save();ok(res,grade,'Note modifiée');}));
 router.delete('/admin/grades/:id',authenticate,requirePermission('enter_grades'),asyncHandler(async(req,res)=>{const grade=await Grade.findById(req.params.id).populate({path:'applicationId',populate:{path:'contestId'}});if(!grade)throw new AppError(404,'GRADE_NOT_FOUND','Note introuvable');assertContestAccess(req.admin,grade.applicationId.contestId);assertContestWritable(grade.applicationId.contestId);await grade.deleteOne();ok(res,{id:req.params.id},'Note supprimée');}));
 router.post('/admin/grades/batch',authenticate,requirePermission('enter_grades'),required('grades'),asyncHandler(async(req,res)=>{if(!Array.isArray(req.body.grades)||!req.body.grades.length)throw new AppError(422,'GRADES_REQUIRED','Aucune note fournie');const saved=[];for(const input of req.body.grades){const application=await scopedApplication(req.admin,input.applicationId||input.nupcan);assertContestWritable(application.contestId);const subject=await Subject.findOne(idFilter(String(input.subjectId)));if(!subject)throw new AppError(422,'INVALID_SUBJECT','Matière invalide');const score=Number(input.score);if(!Number.isFinite(score)||score<0||score>20)throw new AppError(422,'INVALID_GRADE','Chaque note doit être comprise entre 0 et 20');saved.push(await Grade.findOneAndUpdate({applicationId:application._id,subjectId:subject._id},{$set:{score,maximumScore:20,coefficient:Number(input.coefficient||subject.coefficient||1),enteredBy:req.admin._id},$unset:{validatedAt:1,validatedBy:1}},{upsert:true,new:true,runValidators:true}));}ok(res,{count:saved.length,grades:saved},'Notes enregistrées',201);}));
+router.post('/notes/envoyer-resultats',authenticate,requirePermission('validate_grades'),required('candidat_id','concours_id'),asyncHandler(async(req,res)=>{const [candidate,contest]=await Promise.all([Candidate.findOne(idFilter(String(req.body.candidat_id))).lean(),Contest.findOne(contestFilter(String(req.body.concours_id))).lean()]);if(!candidate||!contest)throw new AppError(404,'SELECTION_NOT_FOUND','Candidat ou concours introuvable');assertContestAccess(req.admin,contest);const application=await Application.findOne({candidateId:candidate._id,contestId:contest._id}).lean();if(!application)throw new AppError(404,'APPLICATION_NOT_FOUND','Candidature introuvable');const grades=await Grade.find({applicationId:application._id}).populate('subjectId').lean();if(!grades.length)throw new AppError(422,'GRADES_REQUIRED','Aucune note à envoyer');const average=gradeSummary(grades).average;await Notification.create({candidateId:candidate._id,applicationId:application._id,legacyNupcan:application.nupcan,title:'Résultats disponibles',body:`Vos résultats pour ${contest.title} sont disponibles. Moyenne : ${average==null?'non calculée':`${average}/20`}.`,channel:'in_app'});let emailSent=false;if(candidate.email){await emailService.sendEmail(candidate.email,`Résultats - ${contest.title}`,`<p>Bonjour ${candidate.firstName},</p><p>Vos résultats sont disponibles dans votre espace candidat.</p>`);emailSent=true;}ok(res,{emailSent,average},'Résultats envoyés au candidat');}));
 router.post('/admin/contests/:id/publish-results',authenticate,requirePermission('validate_grades'),asyncHandler(async(req,res)=>{const contest=await Contest.findOne(contestFilter(req.params.id));if(!contest)throw new AppError(404,'CONTEST_NOT_FOUND','Concours introuvable');assertContestAccess(req.admin,contest);if(contest.closesAt&&new Date(contest.closesAt)>new Date())throw new AppError(409,'CONTEST_STILL_OPEN','Les résultats ne peuvent être publiés avant la clôture');const applications=await Application.find({contestId:contest._id}).populate('candidateId').lean(),ids=applications.map(item=>item._id),now=new Date();await Grade.updateMany({applicationId:{$in:ids}},{$set:{validatedBy:req.admin._id,validatedAt:now}});contest.resultsPublishedAt=now;contest.status='archived';await contest.save();const notifications=applications.map(item=>({candidateId:item.candidateId?._id,applicationId:item._id,legacyNupcan:item.nupcan,title:'Résultats publiés',body:`Les résultats du concours ${contest.title} sont disponibles.`,channel:'in_app'}));if(notifications.length)await Notification.insertMany(notifications);const emailResults=await Promise.allSettled(applications.filter(item=>item.candidateId?.email).map(item=>emailService.sendEmail(item.candidateId.email,`Résultats – ${contest.title}`,`<p>Bonjour ${item.candidateId.firstName},</p><p>Vos résultats sont disponibles dans votre espace candidat.</p>`)));ok(res,{applications:applications.length,emailsSent:emailResults.filter(item=>item.status==='fulfilled').length,publishedAt:now},'Résultats publiés et candidats notifiés');}));
 router.get('/admin/archives',authenticate,requirePermission('view_applications'),asyncHandler(async(req,res)=>{await archiveExpiredContests();const query={status:'archived'};if(req.admin.role!=='super_admin')query.establishmentId={$in:assignedEstablishments(req.admin)};const contests=await Contest.find(query).populate('establishmentId').sort({closesAt:-1}).lean();const totals=await Application.aggregate([{$match:{contestId:{$in:contests.map(item=>item._id)}}},{$group:{_id:'$contestId',count:{$sum:1}}}]);const count=new Map(totals.map(item=>[String(item._id),item.count]));ok(res,contests.map(item=>({...toLegacyContest(item),total_candidatures:count.get(String(item._id))||0,readOnly:true})),'Archives chargées');}));
 router.get('/admin/reports/applications/:id/transcript.pdf',authenticate,requirePermission('view_reports'),asyncHandler(async(req,res)=>{const application=await scopedApplication(req.admin,req.params.id),grades=await Grade.find({applicationId:application._id}).populate('subjectId').lean(),summary=gradeSummary(grades);res.type('application/pdf').set('Content-Disposition',`attachment; filename="releve-${application.nupcan}.pdf"`);const pdf=new PDFDocument({margin:48});pdf.pipe(res);pdf.fontSize(18).text('GABCONCOURS – RELEVÉ DE NOTES',{align:'center'}).moveDown();pdf.fontSize(11).text(`Candidat : ${application.candidateId.firstName} ${application.candidateId.lastName}`).text(`NUPCAN : ${application.nupcan}`).text(`Concours : ${application.contestId.title}`).text(`Filière : ${application.programId.name}`).moveDown();grades.forEach(item=>pdf.text(`${item.subjectId?.name||'Matière'} : ${item.score}/${item.maximumScore}  (coef. ${item.coefficient})`));pdf.moveDown().fontSize(14).text(`Moyenne générale : ${summary.average==null?'Non calculée':`${summary.average}/20`}`,{align:'right'});pdf.end();}));

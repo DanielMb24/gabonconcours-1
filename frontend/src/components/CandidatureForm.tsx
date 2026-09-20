@@ -409,9 +409,9 @@ const CandidatureForm: React.FC<CandidatureFormProps> = ({
                                             <SelectValue placeholder="Sélectionner votre niveau"/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {niveaux.map((niveau) => (
-                                                <SelectItem key={niveau.id} value={niveau.id.toString()}>
-                                                    {niveau.libniv}
+                                            {niveaux.map((niveau: any, index: number) => (
+                                                <SelectItem key={String(niveau?.id ?? index)} value={String(niveau?.id ?? '')}>
+                                                    {niveau?.libniv ?? 'Niveau'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -432,9 +432,9 @@ const CandidatureForm: React.FC<CandidatureFormProps> = ({
                                             <SelectValue placeholder="Province d'origine"/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {provinces.map((province) => (
-                                                <SelectItem key={province.id} value={province.id.toString()}>
-                                                    {province.libpro}
+                                            {provinces.map((province: any, index: number) => (
+                                                <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                    {province?.libpro ?? 'Province'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -455,9 +455,9 @@ const CandidatureForm: React.FC<CandidatureFormProps> = ({
                                             <SelectValue placeholder="Province actuelle"/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {provinces.map((province) => (
-                                                <SelectItem key={province.id} value={province.id.toString()}>
-                                                    {province.libpro}
+                                            {provinces.map((province: any, index: number) => (
+                                                <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                    {province?.libpro ?? 'Province'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -478,9 +478,9 @@ const CandidatureForm: React.FC<CandidatureFormProps> = ({
                                             <SelectValue placeholder="Province souhaitée"/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {provinces.map((province) => (
-                                                <SelectItem key={province.id} value={province.id.toString()}>
-                                                    {province.libpro}
+                                            {provinces.map((province: any, index: number) => (
+                                                <SelectItem key={String(province?.id ?? index)} value={String(province?.id ?? '')}>
+                                                    {province?.libpro ?? 'Province'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

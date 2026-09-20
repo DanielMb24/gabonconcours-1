@@ -31,8 +31,8 @@ const ChoixFiliere = () => {
     });
 
     const {data: matieresData} = useQuery({
-        queryKey: ['filiere-matieres', selectedFiliere],
-        queryFn: () => apiService.getFiliereWithMatieres(selectedFiliere!),
+        queryKey: ['filiere-matieres', concoursId, selectedFiliere],
+        queryFn: () => apiService.getFiliereWithMatieres(selectedFiliere!, concoursId),
         enabled: !!selectedFiliere,
     });
 
@@ -135,12 +135,12 @@ const ChoixFiliere = () => {
                                     className="space-y-4"
                                 >
                                     {filieres.map((filiere: ConcoursFiliere) => (
-                                        <div key={filiere.id}
+                                        <div key={String((filiere as any)?.id ?? (filiere as any)?.filiere_id ?? Math.random())}
                                              className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50">
-                                            <RadioGroupItem value={filiere.filiere_id.toString()}
-                                                            id={`filiere-${filiere.id}`}/>
+                                            <RadioGroupItem value={String((filiere as any)?.filiere_id ?? '')}
+                                                            id={`filiere-${String((filiere as any)?.id ?? (filiere as any)?.filiere_id ?? '')}`}/>
                                             <Label
-                                                htmlFor={`filiere-${filiere.id}`}
+                                                htmlFor={`filiere-${String((filiere as any)?.id ?? (filiere as any)?.filiere_id ?? '')}`}
                                                 className="flex-1 cursor-pointer"
                                             >
                                                 <div className="flex justify-between items-center">
