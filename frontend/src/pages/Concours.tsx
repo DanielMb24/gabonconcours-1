@@ -12,6 +12,8 @@ import {apiService} from '@/services/api';
 import {Concours as ConcoursType} from '@/types/entities';
 import ErrorMessage from '@/components/ErrorMessage';
 import {Skeleton} from '@/components/ui/skeleton';
+import ViewToggle from '@/components/ViewToggle';
+import {useViewMode} from '@/hooks/useViewMode';
 
 const Concours = () => {
     const navigate = useNavigate();
@@ -31,6 +33,9 @@ const Concours = () => {
     // États pour la pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 3;
+
+    // Mode d'affichage Cartes / Liste (préférence mémorisée)
+    const [viewMode, setViewMode] = useViewMode('concours', 'cards');
 
     const {data: concoursResponse, isLoading, error, refetch, isFetching} = useQuery({
         queryKey: ['concours'],
@@ -411,6 +416,7 @@ const Concours = () => {
                             </p>
                         )}
                         {isFetching && <span className="inline-flex items-center gap-2"><RefreshCw className="h-3.5 w-3.5 animate-spin"/>Actualisation…</span>}
+                        <ViewToggle mode={viewMode} onChange={setViewMode} />
                     </div>
                 </div>
 
@@ -431,6 +437,7 @@ const Concours = () => {
                     </div>
                 ) : (
                     <>
+                        {viewMode === 'cards' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {paginatedConcours.map((concour: ConcoursType) => (
                                 <Card key={concour.id} className="group flex h-full flex-col overflow-hidden border-border/70 transition-all duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl">
@@ -522,6 +529,45 @@ const Concours = () => {
                                 </Card>
                             ))}
                         </div>
+                        ) : (
+                        <div className="flex flex-col gap-3">
+                            {paginatedConcours.map((concour: ConcoursType) => (
+                                <Card key={concour.id} className="transition-colors hover:border-primary/30">
+                                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="font-bold">{concour.libcnc}</p>
+                                                {getStatusBadge(concour.stacnc)}
+                                            </div>
+                                            <p className="mt-1 truncate text-sm text-muted-foreground">
+                                                {concour.etablissement_nomets} · Session {concour.sescnc} · {concour.niveau_nomniv}
+                                            </p>
+                                            <p className="mt-1 text-sm">
+                                                <span className="font-medium">{parseInt(String(concour.fracnc)).toLocaleString()} FCFA</span>
+                                                <span className="text-muted-foreground"> · clôture le {formatDate(concour.fincnc)}</span>
+                                            </p>
+                                        </div>
+                                        <div className="flex shrink-0 gap-2">
+                                            <Button
+                                                onClick={() => voirPlus(concour.id)}
+                                                variant="outline"
+                                                size="sm"
+                                            >
+                                                Détails
+                                            </Button>
+                                            <Button
+                                                onClick={() => handlePostuler(concour.id)}
+                                                size="sm"
+                                                disabled={concour.stacnc !== '1'}
+                                            >
+                                                {concour.stacnc === '1' ? 'Postuler' : 'Fermé'}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                        )}
 
                         {/* Pagination */}
                         {totalPages > 1 && (
