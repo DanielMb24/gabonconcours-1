@@ -68,6 +68,8 @@
     import  {Modal,ModalContent} from "@/components/ui/modal";
 import AddDocumentDialog from '@/components/candidat/AddDocumentDialog.tsx';
 import DocumentStatusBadge from '@/components/documents/DocumentStatusBadge';
+import ViewToggle from '@/components/ViewToggle';
+import { useViewMode } from '@/hooks/useViewMode';
 
         const DashboardCandidat = () => {
             const { nupcan } = useParams<{ nupcan: string }>();
@@ -83,6 +85,7 @@ const [showAlert, setShowAlert] = useState(false);
             const [documentToReplace, setDocumentToReplace] = useState<any | null>(null);
 const [isAddDocOpen, setIsAddDocOpen] = useState(false);
             const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+            const [documentsView, setDocumentsView] = useViewMode('dashboard-documents', 'cards');
             const scrollToSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             const handleReplaceDocument = (doc: any) => {
@@ -776,18 +779,22 @@ const TelechargerRecu = async () => {
                         {/* ======================= MES DOCUMENTS ======================= */}
                         <Card className="mb-8">
                             <CardHeader>
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <CardTitle className="flex items-center">
                                         <FileCheck className="h-5 w-5 mr-2" />
                                         Mes Documents ({documents?.length || 0})
                                     </CardTitle>
-                              
+                                    <ViewToggle mode={documentsView} onChange={setDocumentsView} />
+                                    <Button size="sm" variant="outline" onClick={() => setIsAddDocOpen(true)}>
+                                        + Ajouter
+                                    </Button>
                                 </div>
                             </CardHeader>
 
                             <CardContent>
                                 {documents && documents.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <>
+                                    <div className={documentsView === 'cards' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "hidden"}>
                                         {documents.map((doc: any) => {
                                             const canModify = doc.document_statut === 'rejete';
 
@@ -883,6 +890,51 @@ const TelechargerRecu = async () => {
 />
 
                                     </div>
+                                    <div className={documentsView === 'list' ? "flex flex-col gap-3" : "hidden"}>
+                                        {documents.map((doc: any) => {
+                                            const canModify = doc.document_statut === 'rejete';
+
+                                            return (
+                                                <Card key={doc.id} className="transition-shadow hover:shadow-md">
+                                                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                            <FileText className="h-5 w-5 shrink-0 text-primary" />
+                                                            <div className="min-w-0">
+                                                                <p className="truncate font-medium">{doc.nomdoc || 'Sans nom'}</p>
+                                                                <p className="truncate text-sm text-muted-foreground">
+                                                                    {doc.type || 'Non spécifié'}
+                                                                    {doc.taille && ` · ${(doc.taille / 1024).toFixed(1)} KB`}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex shrink-0 items-center gap-2">
+                                                            <DocumentStatusBadge status={doc.document_statut} />
+                                                            <Button variant="outline" size="sm" onClick={() => setSelectedDocumentToView(doc)}>
+                                                                <Eye className="h-4 w-4 mr-2" /> Voir
+                                                            </Button>
+                                                            <Button
+                                                                variant="default"
+                                                                size="sm"
+                                                                onClick={() => setSelectedDocumentToEdit(doc)}
+                                                                disabled={!canModify}
+                                                            >
+                                                                <Edit className="h-4 w-4 mr-2" /> Modifier
+                                                            </Button>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={() => handleDeleteDocument(doc)}
+                                                                disabled={!canModify}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+                                                            </Button>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
+                                    </>
                                 ) : (
                                     // Aucun document
                                     <div className="text-center py-8">

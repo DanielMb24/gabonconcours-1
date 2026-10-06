@@ -37,6 +37,8 @@ import NotificationPanel from '@/components/candidate/NotificationPanel';
 import DocumentsManager from '@/components/candidat/DocumentsManager';
 import MessagerieCandidat from '@/components/MessagerieCandidat';
 import GradesBulletin from '@/components/candidat/GradesBulletin';
+import ViewToggle from '@/components/ViewToggle';
+import { useViewMode } from '@/hooks/useViewMode';
 
 interface Candidature {
     nupcan: string;
@@ -97,6 +99,7 @@ const DashboardNipcan: React.FC = () => {
     const [isLoadingNipcan, setIsLoadingNipcan] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
+    const [candidaturesView, setCandidaturesView] = useViewMode('dashboard-candidatures', 'list');
     const { data: notificationsResponse } = useQuery({
         queryKey: ['notifications', selectedCandidature],
         queryFn: () => candidatePortalService.getNotifications(selectedCandidature as string),
@@ -348,15 +351,60 @@ const DashboardNipcan: React.FC = () => {
                     ) : (
                         <Card>
                             <CardHeader>
-                                <CardTitle className="flex items-center justify-between">
+                                <CardTitle className="flex items-center justify-between gap-2">
                                     <span>Candidatures recentes</span>
-                                    <Button onClick={handleNouvelleCandidature} size="sm" className="gap-2">
-                                        <Plus className="h-4 w-4" />
-                                        Nouvelle
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <ViewToggle mode={candidaturesView} onChange={setCandidaturesView} />
+                                        <Button onClick={handleNouvelleCandidature} size="sm" className="gap-2">
+                                            <Plus className="h-4 w-4" />
+                                            Nouvelle
+                                        </Button>
+                                    </div>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
+                                {candidaturesView === 'cards' ? (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    {dashboardData.candidatures.slice(0, 4).map((candidature) => (
+                                        <div key={candidature.nupcan} className="flex flex-col gap-3 rounded-xl border p-4 transition-colors hover:border-blue-200 hover:bg-blue-50/30">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <GraduationCap className="h-4 w-4 shrink-0 text-gray-400" />
+                                                    <h4 className="truncate font-semibold text-gray-900">{candidature.concours.libcnc}</h4>
+                                                </div>
+                                                <Badge className={getStatutBadge(candidature.statut)}>
+                                                    {candidature.statut}
+                                                </Badge>
+                                            </div>
+                                            <p className="truncate text-sm text-gray-600">{candidature.filiere.nomfil}</p>
+                                            <p className="text-xs text-gray-500">NUPCAN: {candidature.nupcan}</p>
+                                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                <FileText className="h-3 w-3 text-blue-600" />
+                                                <span>Documents: <span className="font-semibold text-blue-600">{candidature.documents_deposes || 0}/{candidature.documents_requis || 0}</span></span>
+                                                <span className="ml-auto font-semibold">{candidature.paiement_statut || 'Non payé'}</span>
+                                            </div>
+                                            <div className="h-2 w-full rounded-full bg-gray-200">
+                                                <div
+                                                    className="h-2 rounded-full bg-blue-600 transition-all"
+                                                    style={{ width: `${candidature.progression}%` }}
+                                                />
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setSelectedCandidature(candidature.nupcan);
+                                                    setActiveTab('candidatures');
+                                                }}
+                                                className="mt-auto gap-2"
+                                            >
+                                                Voir
+                                                <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                                ) : (
                                 <div className="space-y-4">
                                     {dashboardData.candidatures.slice(0, 3).map((candidature) => (
                                         <div key={candidature.nupcan} className="flex flex-col gap-4 p-4 border rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition-colors sm:flex-row sm:items-center sm:justify-between">
@@ -413,6 +461,7 @@ const DashboardNipcan: React.FC = () => {
                                         </div>
                                     ))}
                                 </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}
