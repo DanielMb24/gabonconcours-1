@@ -112,7 +112,7 @@ const DocumentValidationModal: React.FC<DocumentValidationModalProps> = ({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="w-[min(94vw,52rem)] max-w-3xl max-h-[88vh] overflow-y-auto p-0 rounded-xl shadow-xl">
+                <DialogContent className="!w-[min(94vw,52rem)] !max-w-3xl !max-h-[88vh] overflow-y-auto p-0 rounded-xl shadow-xl">
                     <DialogHeader className="p-5 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
                         <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-gray-800">
                             <FileText className="h-7 w-7 text-blue-600" />
