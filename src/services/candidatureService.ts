@@ -63,7 +63,7 @@ class CandidatureService {
             const filiereSelection = filiereService.getFiliereSelection();
             console.log('Service: Données filière récupérées:', filiereSelection);
 
-            if (filiereSelection?.filiere_id) {
+            if (!formData.has('filiere_id') && filiereSelection?.filiere_id) {
                 formData.append('filiere_id', String(filiereSelection.filiere_id));
             }
 
@@ -81,7 +81,17 @@ class CandidatureService {
                 if (response.status === 409 || candidatResponse?.error?.code === 'APPLICATION_ALREADY_EXISTS') {
                     throw new Error('Vous êtes déjà inscrit à ce concours. Retrouvez cette candidature dans votre dashboard.');
                 }
-                throw new Error(candidatResponse.message || `Impossible de créer la candidature (${response.status})`);
+                // Le backend renvoie le détail des champs manquants dans `errors`
+                // (ex. [{field: 'filiere_id', ...}]) : l'afficher plutôt qu'un
+                // message générique.
+                const details = Array.isArray(candidatResponse.errors)
+                    ? candidatResponse.errors.map((e: any) => e?.field || e?.message || e).filter(Boolean).join(', ')
+                    : '';
+                throw new Error(
+                    details
+                        ? `${candidatResponse.message || 'Impossible de créer la candidature'} : ${details}`
+                        : (candidatResponse.message || `Impossible de créer la candidature (${response.status})`)
+                );
             }
             const account = candidatResponse.data?.account;
             if (account) {

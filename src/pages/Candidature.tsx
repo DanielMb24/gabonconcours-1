@@ -15,8 +15,7 @@ import {apiService} from '@/services/api';
 import {useCandidature} from '@/hooks/useCandidature';
 
 const Candidature = () => {
-    const {concoursId} = useParams<{ concoursId: string }>();
-    const {filiere} = useParams<{ filiere: string }>();
+    const {concoursId, filiereId} = useParams<{ concoursId: string; filiereId: string }>();
     const navigate = useNavigate();
     const {createCandidature, isLoading: candidatureLoading} = useCandidature();
 
@@ -350,7 +349,29 @@ const Candidature = () => {
             formData.append('proorg', candidat.proorg);
             formData.append('proact', candidat.proact || candidat.proorg);
             formData.append('proaff', candidat.proaff || candidat.proorg);
-            formData.append('concours_id', concoursId || '');
+            if (!concoursId) {
+                toast({
+                    title: "Concours manquant",
+                    description: "Repartez de la page du concours pour créer votre candidature.",
+                    variant: "destructive",
+                });
+                return;
+            }
+            formData.append('concours_id', concoursId);
+            // La filière vient de l'URL (source fiable). Le service complète
+            // depuis la sélection en session si besoin.
+            if (!formData.has('filiere_id')) {
+                if (filiereId) {
+                    formData.append('filiere_id', filiereId);
+                } else {
+                    toast({
+                        title: "Filière manquante",
+                        description: "Retournez au choix de la filière avant de valider votre candidature.",
+                        variant: "destructive",
+                    });
+                    return;
+                }
+            }
             if (selectedPhoto) formData.append('phtcan', selectedPhoto);
 
             // Utiliser le nouveau service de candidature
