@@ -52,19 +52,19 @@ class MessageService {
         }
     }
 
-    // Répondre à un message (admin)
+    // Répondre à un message (admin) — route réelle POST /messages/admin.
     async replyMessage(data: {
         message_id?: number;
         nupcan: string;
-        admin_id: number;
+        admin_id?: number;
         sujet?: string;
         message: string;
     }): Promise<any> {
         try {
             const response = await apiService.makeRequest(
-                '/messages/admin/repondre',
+                '/messages/admin',
                 'POST',
-                data
+                { nupcan: data.nupcan, sujet: data.sujet, message: data.message }
             );
             return response;
         } catch (error) {

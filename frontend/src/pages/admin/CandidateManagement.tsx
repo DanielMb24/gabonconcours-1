@@ -16,11 +16,13 @@ import {
     Download,
     Send,
     RefreshCw,
-    AlertCircle
+    AlertCircle,
+    AlertTriangle
     ,CheckCircle, XCircle, Clock3, Pencil, Trash2
 } from 'lucide-react';
 import {toast} from '@/hooks/use-toast';
 import {candidatureService} from '@/services/candidatureService';
+import {documentService} from '@/services/documentService';
 import {receiptService} from '@/services/receiptService';
 import CandidateDocumentManager from '@/components/admin/CandidateDocumentManager';
 import CandidatePhotoCard from '@/components/admin/CandidatePhotoCard';
@@ -180,6 +182,19 @@ const CandidateManagement = () => {
     const concours = candidatureData.concours;
     const filiere = candidatureData.filiere;
     const paiement = candidatureData.paiement;
+
+    // État du dossier pour la garde de validation : on ne peut valider
+    // que si toutes les pièces requises sont validées et aucun document rejeté.
+    const {data: checklistData} = useQuery({
+        queryKey: ['candidature-checklist', nupcan],
+        queryFn: () => documentService.getChecklist(nupcan!),
+        enabled: !!nupcan && !!candidatureData,
+        retry: 1,
+    });
+    const missingDocs = checklistData?.summary?.missing ?? 0;
+    const rejectedDocs = [...(checklistData?.checklist || []).map((item: any) => item.document), ...(checklistData?.supplemental || [])].filter((doc: any) => doc && doc.document_statut === 'rejete').length;
+    const dossierNotReady = missingDocs > 0 || rejectedDocs > 0;
+    const dossierBlockReason = [missingDocs > 0 ? `${missingDocs} pièce(s) requise(s) manquante(s)` : '', rejectedDocs > 0 ? `${rejectedDocs} document(s) rejeté(s) à faire remplacer` : ''].filter(Boolean).join(' — ');
 
 const admin_role = admin?.admin_role || '';
 const role = admin?.role || '';
@@ -406,9 +421,15 @@ const editCandidate=()=>{const nomcan=window.prompt('Nom',candidat.nomcan);if(no
                         <CardTitle>Actions Administratives</CardTitle>
                     </CardHeader>
                     <CardContent>
+                        {dossierNotReady && (
+                            <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span><strong>Validation impossible :</strong> {dossierBlockReason}. Validez ou faites remplacer les documents concernés d'abord.</span>
+                            </div>
+                        )}
                         <div className="mb-4 flex flex-wrap gap-2">
                             <Button onClick={()=>statusMutation.mutate({status:'under_review'})} disabled={!canManageApplication||archived||statusMutation.isPending} variant="outline"><Clock3 className="mr-2 h-4 w-4"/>Mettre en vérification</Button>
-                            <Button onClick={()=>statusMutation.mutate({status:'approved'})} disabled={!canManageApplication||archived||statusMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="mr-2 h-4 w-4"/>Valider</Button>
+                            <Button onClick={()=>statusMutation.mutate({status:'approved'})} disabled={!canManageApplication||archived||statusMutation.isPending||dossierNotReady} title={dossierNotReady ? `Dossier incomplet : ${dossierBlockReason}` : 'Valider la candidature'} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="mr-2 h-4 w-4"/>Valider</Button>
                             <Button onClick={()=>{const reason=window.prompt('Motif du rejet :');if(reason)statusMutation.mutate({status:'rejected',reason});}} disabled={!canManageApplication||archived||statusMutation.isPending} variant="destructive"><XCircle className="mr-2 h-4 w-4"/>Rejeter</Button>
                             <Button onClick={editCandidate} disabled={!canManageApplication||archived||candidateMutation.isPending} variant="outline"><Pencil className="mr-2 h-4 w-4"/>Modifier le candidat</Button>
                             {['draft','brouillon'].includes(String(candidat.statut||'').toLowerCase())&&<Button onClick={()=>window.confirm('Annuler ce brouillon ?')&&cancelMutation.mutate()} disabled={!canManageApplication||archived||cancelMutation.isPending} variant="destructive"><Trash2 className="mr-2 h-4 w-4"/>Annuler le brouillon</Button>}

@@ -15,6 +15,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import MessagerieRealtime from '@/components/messaging/MessagerieRealtime';
+import { messageService } from '@/services/messageService';
 
 interface Conversation {
   nupcan: string;
@@ -30,34 +31,60 @@ interface Conversation {
 
 interface ConversationsAdminProps {
   etablissementId?: number;
-  adminId: number;
+  adminId?: number;
 }
 
 const ConversationsAdmin: React.FC<ConversationsAdminProps> = ({ etablissementId, adminId }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'non_lu'>('all');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
 
   const loadConversations = async () => {
     setLoading(true);
+    setLoadError('');
     try {
-      const params = new URLSearchParams();
-      if (etablissementId) params.append('etablissement_id', etablissementId.toString());
-      if (filter === 'non_lu') params.append('statut', 'non_lu');
-      if (search) params.append('search', search);
-
-      const response = await fetch(
-        `http://localhost:3001/api/messaging-realtime/admin/conversations?${params.toString()}`
+      // Vraie API : GET /messages/admin (token admin envoyé par apiService).
+      // On regroupe ensuite par NUPCAN pour former les conversations.
+      const items = await messageService.getAdminMessages(
+        etablissementId ? { etablissement_id: etablissementId } : undefined
       );
-      const data = await response.json();
-      
-      if (data.success) {
-        setConversations(data.data);
+      const grouped = new Map<string, Conversation & { lastDate: string }>();
+      for (const msg of items as any[]) {
+        const key = msg.candidat_nupcan || 'Sans NUPCAN';
+        const current = grouped.get(key) || {
+          nupcan: key,
+          nomcan: msg.nomcan || '',
+          prncan: msg.prncan || '',
+          maican: msg.maican || '',
+          libcnc: undefined,
+          total_messages: 0,
+          messages_non_lus: 0,
+          dernier_message_date: msg.created_at,
+          dernier_message: '',
+          lastDate: '',
+        };
+        current.total_messages += 1;
+        if (msg.expediteur === 'candidat' && msg.statut === 'non_lu') current.messages_non_lus += 1;
+        if (!current.lastDate || String(msg.created_at) >= current.lastDate) {
+          current.lastDate = String(msg.created_at || '');
+          current.dernier_message_date = msg.created_at;
+          current.dernier_message = msg.sujet ? `${msg.sujet} — ${msg.message}` : msg.message;
+        }
+        if (!current.nomcan && msg.nomcan) {
+          current.nomcan = msg.nomcan;
+          current.prncan = msg.prncan || '';
+          current.maican = msg.maican || '';
+        }
+        grouped.set(key, current);
       }
+      const sorted = [...grouped.values()].sort((a, b) => (b.lastDate || '').localeCompare(a.lastDate || ''));
+      setConversations(sorted.map(({ lastDate, ...conv }) => conv));
     } catch (error) {
       console.error('Erreur chargement conversations:', error);
+      setLoadError('Impossible de charger les conversations. Vérifiez votre connexion puis réessayez.');
     } finally {
       setLoading(false);
     }
@@ -67,7 +94,17 @@ const ConversationsAdmin: React.FC<ConversationsAdminProps> = ({ etablissementId
     loadConversations();
     const interval = setInterval(loadConversations, 15000); // Refresh toutes les 15s
     return () => clearInterval(interval);
-  }, [etablissementId, filter, search]);
+  }, [etablissementId]);
+
+  // Recherche et filtre « non lues » appliqués côté client.
+  const visibleConversations = conversations.filter((conv) => {
+    if (filter === 'non_lu' && conv.messages_non_lus === 0) return false;
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return [conv.nupcan, conv.nomcan, conv.prncan, conv.maican, conv.dernier_message]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
 
   if (selectedConversation) {
     return (
@@ -149,7 +186,18 @@ const ConversationsAdmin: React.FC<ConversationsAdminProps> = ({ etablissementId
 
       {/* Liste des conversations */}
       <div className="space-y-3">
-        {loading && conversations.length === 0 ? (
+        {loadError ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-lg mb-2 text-red-600">Erreur de chargement</p>
+              <p className="text-sm text-muted-foreground mb-4">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={loadConversations}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Réessayer
+              </Button>
+            </CardContent>
+          </Card>
+        ) : loading && conversations.length === 0 ? (
           <Card>
             <CardContent className="py-12">
               <div className="flex items-center justify-center">
@@ -157,16 +205,16 @@ const ConversationsAdmin: React.FC<ConversationsAdminProps> = ({ etablissementId
               </div>
             </CardContent>
           </Card>
-        ) : conversations.length === 0 ? (
+        ) : visibleConversations.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg mb-2">Aucune conversation</p>
-              <p className="text-sm">Les messages des candidats apparaîtront ici</p>
+              <p className="text-sm">{search || filter !== 'all' ? 'Aucun résultat pour ces critères' : 'Les messages des candidats apparaîtront ici'}</p>
             </CardContent>
           </Card>
         ) : (
-          conversations.map((conv) => (
+          visibleConversations.map((conv) => (
             <Card
               key={conv.nupcan}
               className={`cursor-pointer transition-all hover:shadow-md ${

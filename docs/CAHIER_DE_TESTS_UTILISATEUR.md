@@ -77,6 +77,8 @@ Vérifier, du point de vue de l'utilisateur final, que les parcours **candidat**
 | TU-C-28 | Résultats et bulletin (P2) | Notes saisies | 1. Onglet Résultats 2. Télécharger PDF | Matières, coefficients, moyenne corrects |
 | TU-C-29 | Notifications et messagerie (P3) | 1 décision admin + 1 message admin | 1. Lire la notification 2. Répondre via Messages | Badge de non-lus à jour, message envoyé et visible côté admin |
 | TU-C-30 | Statut public par NUPCAN (P2) | NUPCAN connu | 1. `/statut/:nupcan` | Fiche lisible, boutons Continuer vers documents/paiement |
+| TU-C-31 | Activation notifications push (P2) | Compte candidat, navigateur compatible | 1. Paramètres → Activer les notifications 2. Autoriser dans le navigateur 3. Déclencher une notification (ex. validation d'un document) | Appareil abonné ; notification reçue même onglet fermé ; clic ouvre la candidature |
+| TU-C-32 | Désactivation notifications push (P3) | Abonnement actif | 1. Paramètres → Désactiver 2. Déclencher une notification | Plus aucune notification push ; in-app conservées |
 
 ---
 
@@ -104,6 +106,8 @@ Vérifier, du point de vue de l'utilisateur final, que les parcours **candidat**
 | TU-A-18 | Journaux d'activité (P3) | Actions TU-A-08/09 effectuées | 1. `/admin/logs` : rechercher la candidature | Décisions tracées (qui, quoi, quand) |
 | TU-A-19 | IA indisponible → manuel (P2) | Clé IA absente/invalide (recette) | 1. Déposer un document 2. Tenter une relance IA | Mention « IA indisponible », validation manuelle toujours possible |
 | TU-A-20 | Support candidat (P3) | Demande avec NUPCAN | 1. `/admin/support` : répondre en citant le NUPCAN | Réponse envoyée et traçable |
+| TU-A-21 | Validation bloquée si dossier incomplet (P1) | Candidature avec 1 pièce manquante + 1 doc rejeté | 1. Ouvrir `/admin/candidats/:nupcan` 2. Lire le bandeau 3. Tenter Valider (bouton désactivé) 4. Forcer via API `PATCH /admin/applications/:id/status` → approved | Bandeau amber avec motif ; bouton désactivé ; API répond 409 `APPLICATION_NOT_READY` avec le détail |
+| TU-A-22 | Messagerie admin bout-en-bout (P1) | 1 message candidat existant | 1. `/admin/messagerie` : conversations listées (pas d'erreur réseau) 2. Rechercher par NUPCAN 3. Ouvrir le fil 4. Répondre 5. Marquer comme lu | Fil complet, réponse visible côté candidat, badge non-lus à jour, aucune URL `localhost` appelée |
 
 ---
 

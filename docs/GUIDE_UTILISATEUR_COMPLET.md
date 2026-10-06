@@ -247,7 +247,12 @@ Qualité exigée : fichier net, complet, lisible, non protégé par mot de passe
 
 ### Notifications et messagerie
 - **Notifications** : cloche + panneau ; marquer comme lues.
-- **Messagerie** : écrire à l'administration **en précisant toujours** : NUPCAN, concours/filière, type de document concerné, date approximative de l'action. Ne jamais y inscrire de mot de passe.
+- **Messagerie** : écrire à l'administration **en précisant toujours** : NUPCAN, concours/filière, type de document concerné, date approximative de l'action. Ne jamais y inscrire de mot de passe. Côté admin, toutes les conversations sont centralisées dans **Communication → Messages** (recherche par nom/NUPCAN, filtre non lues, réponse directe).
+
+### Notifications push sur téléphone (PWA)
+- Espace candidat → **Paramètres** → **« Notifications sur cet appareil »** → **Activer** (autoriser dans le navigateur si demandé ; sur iPhone : installer d'abord la PWA via Partager → Écran d'accueil, iOS 16.4+).
+- Vous recevez alors les alertes même application fermée : document validé/rejeté, message de l'administration, résultats. Un clic ouvre directement la page concernée.
+- Désactivation possible à tout moment au même endroit (et dans les réglages du navigateur en cas de blocage).
 
 ---
 
@@ -326,6 +331,8 @@ Vue d'ensemble chiffrée : concours (ouverts/fermés), candidatures, candidats, 
 ---
 
 ## 12. Validation des documents (procédure admin)
+
+> **Garde anti-validation incomplète** : le bouton **Valider** d'une candidature est désactivé (avec le motif : pièces manquantes / documents rejetés) tant que toutes les pièces requises ne sont pas validées et qu'aucun document rejeté ne reste en attente de remplacement. Le serveur refuse également toute validation forcée (erreur 409). Validez ou faites remplacer les documents d'abord.
 
 1. Ouvrir la file (**Dossiers** ou fiche candidat).
 2. Filtrer les documents **en attente / à vérifier** (priorité aux signalements IA).
