@@ -40,6 +40,8 @@ Vérifier, du point de vue de l'utilisateur final, que les parcours **candidat**
 | TU-C-07 | Règles des identifiants (P2) | — | 1. Pseudo de 2 car. / ne commençant pas par une lettre 2. Tél. < 8 chiffres 3. Mot de passe de 9 car. 4. Email déjà utilisé | Chaque cas rejeté avec message explicite |
 | TU-C-08 | Session expirée (P2) | Connecté | 1. Supprimer `candidate_token` du stockage (ou attendre 24 h) 2. Ouvrir `/dashboard/:nipcan` | Redirection/écran « Session requise », pas de page blanche |
 | TU-C-09 | Déconnexion (P2) | Connecté | 1. Paramètres → Se déconnecter 2. Rouvrir le dashboard | Accès refusé, retour à la connexion |
+| TU-C-09bis | Compte auto-créé affiché en confirmation (P1) | Sans compte, 1ère candidature | 1. Créer une candidature 2. Lire l'encadré bleu | Nom d'utilisateur `nip…` (non modifiable) + mot de passe temporaire affichés ; mention paramètres présente ; email reçu si possible |
+| TU-C-09ter | Modification du mot de passe (P1) | Compte auto-créé, connecté | 1. Paramètres → Modifier mon mot de passe (actuel + nouveau ≥ 10 car. + confirmation) 2. Se déconnecter 3. Se reconnecter (ancien puis nouveau) | Ancien refusé, nouveau accepté ; autres sessions révoquées ; NIPCAN, utilisateur et NUPCAN inchangés |
 
 ---
 

@@ -121,6 +121,16 @@ Contraintes des identifiants :
 - Téléphone : 8 à 15 chiffres.
 - L'email, le téléphone et le nom d'utilisateur doivent être **uniques** sur la plateforme.
 
+### 4.1bis Compte créé automatiquement à la première candidature
+
+Si vous candidatez **sans compte**, un compte est créé automatiquement avec votre candidature. La page de confirmation affiche alors un encadré bleu :
+
+- **Nom d'utilisateur** : dérivé de votre NIPCAN en minuscules (ex. NIPCAN `NIP2026000001` → utilisateur `nip2026000001`). Il sert d'identifiant de connexion (au même titre que l'email ou le téléphone) et il est **non modifiable**, comme le NIPCAN.
+- **Mot de passe temporaire** : à conserver (envoyé aussi par email si possible). C'est **la seule chose modifiable** : espace candidat → **Paramètres** → **« Modifier mon mot de passe »** (mot de passe actuel exigé, nouveau ≥ 10 caractères, différent de l'actuel ; les autres sessions sont alors déconnectées).
+- Bouton **« J'ai conservé mes identifiants »** : masque l'encadré (les identifiants restent valables).
+
+Rappel des identifiants : **NIPCAN** = la personne (immuable) ; **nom d'utilisateur** = la connexion (dérivé du NIPCAN, immuable) ; **NUPCAN** = une participation à un concours ; **mot de passe** = le seul élément modifiable.
+
 ### 4.2 Se connecter
 
 1. Saisir votre **email, téléphone ou nom d'utilisateur** + mot de passe.
