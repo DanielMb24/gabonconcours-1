@@ -1,5 +1,7 @@
 import CandidateAccountRequired from '@/components/CandidateAccountRequired';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import SplashScreen from '@/components/SplashScreen';
+import { useEffect, useState } from 'react';
 import {BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {Toaster} from '@/components/ui/toaster';
@@ -92,8 +94,17 @@ const SuperAdminRoute = ({children}: { children: React.ReactNode }) => {
 };
 
 function App() {
+    // Écran de lancement animé à l'ouverture (PWA). Durée alignée
+    // sur l'animation CSS (sortie en fondu à 1,6 s).
+    const [showSplash, setShowSplash] = useState(true);
+    useEffect(() => {
+        const timer = setTimeout(() => setShowSplash(false), 2050);
+        return () => clearTimeout(timer);
+    }, []);
+
     return (
         <QueryClientProvider client={queryClient}>
+            {showSplash && <SplashScreen />}
             <LanguageProvider>
                 <AdminAuthProvider>
                     <Router>
