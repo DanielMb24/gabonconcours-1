@@ -132,7 +132,7 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="!max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>Ajouter un document</DialogTitle>
                     <DialogDescription>

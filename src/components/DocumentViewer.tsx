@@ -108,7 +108,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({isOpen, onClose, documen
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogContent className="!max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center justify-between">
                         <span className="truncate mr-4">{document ? documentName : 'Aucun document'}</span>
