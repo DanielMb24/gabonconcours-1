@@ -17,6 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { apiService } from '@/services/api';
 import SuccessModal from '@/components/modals/SuccessModal';
 import ErrorModal from '@/components/modals/ErrorModal';
 
@@ -55,22 +56,21 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Charger les messages
+  // Charger les messages (vraie API : /messages/*, jamais de localhost en dur)
   const loadMessages = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/messaging-realtime/candidat/${nupcan}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setMessages(data.data);
-        scrollToBottom();
-      }
+      const response = mode === 'admin'
+        ? await apiService.makeRequest<any[]>(`/messages/admin?nupcan=${encodeURIComponent(nupcan)}`, 'GET')
+        : await apiService.makeRequest<any[]>(`/messages/candidat/${encodeURIComponent(nupcan)}`, 'GET');
+      if (!response.success) throw new Error(response.message || 'Chargement impossible');
+      setMessages(Array.isArray(response.data) ? response.data : []);
+      scrollToBottom();
     } catch (error) {
       console.error('Erreur chargement messages:', error);
-      setErrorModal({ 
-        show: true, 
-        message: 'Impossible de charger les messages. Veuillez réessayer.' 
+      setErrorModal({
+        show: true,
+        message: 'Impossible de charger les messages. Veuillez réessayer.'
       });
     } finally {
       setLoading(false);
@@ -101,19 +101,13 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
     setSending(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/messaging-realtime/candidat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nupcan,
-          sujet,
-          message: nouveauMessage
-        })
+      const response = await apiService.makeRequest('/messages/candidat', 'POST', {
+        nupcan,
+        sujet: sujet.trim() || 'Sans objet',
+        message: nouveauMessage.trim()
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         setSuccessModal({ 
           show: true, 
           message: 'Message envoyé avec succès ! Vous recevrez une réponse par email.' 
@@ -123,7 +117,7 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
         setShowNewMessage(false);
         loadMessages();
       } else {
-        setErrorModal({ show: true, message: data.message });
+        setErrorModal({ show: true, message: response.message || 'Envoi impossible.' });
       }
     } catch (error: any) {
       console.error('Erreur envoi message:', error);
@@ -136,12 +130,13 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
     }
   };
 
-  // Répondre à un message (admin)
-  const handleReply = async (messageId: number) => {
-    if (!nouveauMessage.trim() || !adminId) {
-      setErrorModal({ 
-        show: true, 
-        message: 'Veuillez saisir un message et vous assurer d\'être connecté.' 
+  // Répondre à un message (admin) — l'admin est identifié par son token,
+  // aucun admin_id à transmettre.
+  const handleReply = async (_messageId: number) => {
+    if (!nouveauMessage.trim()) {
+      setErrorModal({
+        show: true,
+        message: 'Veuillez saisir un message et vous assurer d\'être connecté.'
       });
       return;
     }
@@ -149,31 +144,23 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
     setSending(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/messaging-realtime/admin/reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nupcan,
-          admin_id: adminId,
-          message_id: messageId,
-          sujet: sujet || 'Réponse à votre message',
-          message: nouveauMessage
-        })
+      const response = await apiService.makeRequest('/messages/admin', 'POST', {
+        nupcan,
+        sujet: sujet.trim() || 'Réponse à votre message',
+        message: nouveauMessage.trim()
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         setSuccessModal({ 
           show: true, 
-          message: 'Réponse envoyée avec succès ! Le candidat recevra un email.' 
+          message: 'Réponse envoyée avec succès ! Le candidat recevra une notification.' 
         });
         setNouveauMessage('');
         setSujet('');
         setShowNewMessage(false);
         loadMessages();
       } else {
-        setErrorModal({ show: true, message: data.message });
+        setErrorModal({ show: true, message: response.message || 'Envoi impossible.' });
       }
     } catch (error) {
       console.error('Erreur réponse:', error);
@@ -186,12 +173,11 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
     }
   };
 
-  // Marquer comme lu
+  // Marquer comme lu (admin uniquement ; la vraie route exige un token admin)
   const markAsRead = async (messageId: number) => {
+    if (mode !== 'admin') return;
     try {
-      await fetch(`http://localhost:3001/api/messaging-realtime/${messageId}/read`, {
-        method: 'PUT'
-      });
+      await apiService.makeRequest(`/messages/${messageId}/marquer-lu`, 'PUT');
       loadMessages();
     } catch (error) {
       console.error('Erreur marquage lu:', error);
