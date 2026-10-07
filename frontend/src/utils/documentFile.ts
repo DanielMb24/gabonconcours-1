@@ -5,7 +5,10 @@
 
 export const ACCEPTED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 export const ACCEPTED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
-export const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10 Mo
+// Plafond plateforme : les fonctions serverless (Vercel) refusent les corps
+// > ~4,5 Mo (413). Le backend accepte 10 Mo en local, mais le client reste
+// à 4 Mo pour garantir le passage en production.
+export const MAX_DOCUMENT_SIZE = 4 * 1024 * 1024; // 4 Mo
 
 const EXTENSION_MIME: Record<string, string> = {
     pdf: 'application/pdf',
@@ -39,7 +42,7 @@ export const validateDocumentFile = (file: File | null | undefined, maxSize: num
         return { ok: false, error: 'Format non accepté : envoyez un PDF, JPEG, PNG ou WebP.' };
     }
     if (file.size > maxSize) {
-        return { ok: false, error: `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo) : 10 Mo maximum.` };
+        return { ok: false, error: `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo) : 4 Mo maximum en ligne (compressez ou photographiez en qualité réduite).` };
     }
     if (file.size === 0) {
         return { ok: false, error: 'Fichier vide ou illisible : choisissez un autre fichier.' };

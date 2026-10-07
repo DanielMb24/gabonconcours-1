@@ -7,6 +7,7 @@ import {Progress} from '@/components/ui/progress';
 import {Upload, FileText, X, CheckCircle, AlertCircle, ArrowLeft, PlusCircle} from 'lucide-react';
 import Layout from '@/components/Layout';
 import {apiService} from '@/services/api';
+import {validateDocumentFile} from '@/utils/documentFile';
 import {toast} from '@/hooks/use-toast';
 import {DocumentOption, Concours} from '@/types/entities';
 import {useCandidature} from '@/hooks/useCandidature';
@@ -186,33 +187,13 @@ const Documents = () => {
     });
 
     const fileValidation = (file: File): boolean => {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-
-        if (file.size > maxSize) {
+        // Validateur partagé : type vide (mobile), HEIC, taille (plafond
+        // plateforme 4 Mo), hors-ligne — avec messages explicites.
+        const check = validateDocumentFile(file);
+        if (!check.ok) {
             toast({
-                title: '❌ Fichier trop volumineux',
-                description: (
-                    <div className="mt-2 space-y-1">
-                        <p className="font-semibold">Le fichier ne doit pas dépasser 5MB</p>
-                        <p className="text-xs opacity-80">Taille actuelle: {(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                    </div>
-                ),
-                variant: 'destructive',
-                duration: 5000,
-            });
-            return false; 
-        }
-
-        if (!allowedTypes.includes(file.type)) {
-            toast({
-                title: '❌ Format non supporté',
-                description: (
-                    <div className="mt-2 space-y-1">
-                        <p className="font-semibold">Seuls les fichiers PDF, JPEG et PNG sont acceptés</p>
-                        <p className="text-xs opacity-80">Format détecté: {file.type || 'inconnu'}</p>
-                    </div>
-                ),
+                title: '❌ Fichier refusé',
+                description: check.error,
                 variant: 'destructive',
                 duration: 5000,
             });
@@ -758,7 +739,7 @@ const Documents = () => {
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="text-primary mt-0.5">•</span>
-                                        <span>Taille max: 5 Mo par fichier</span>
+                                        <span>Taille max: 4 Mo par fichier</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="text-primary mt-0.5">•</span>
