@@ -1,7 +1,9 @@
-import { apiService } from './api';
+import { apiService, BACKEND_ORIGIN } from './api';
 
 class ExportService {
-  private baseUrl = 'http://localhost:3001/api';
+  private get baseUrl() {
+    return `${BACKEND_ORIGIN}/api`;
+  }
 
   // Exporter les candidats en Excel
   async exportCandidatesExcel(concoursId?: number): Promise<void> {

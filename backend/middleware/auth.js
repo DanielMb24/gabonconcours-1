@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
+const env = require('../config/env');
 
+// LEGACY — conservé pour compatibilité server.js uniquement.
+// La source active est middleware/mongoAuth.js (JWT + cookie admin_session).
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -12,7 +15,10 @@ const authenticateToken = (req, res, next) => {
         });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt', (err, decoded) => {
+    if (!env.jwtSecret) {
+        return res.status(500).json({ success: false, message: 'Configuration serveur incomplète (JWT)' });
+    }
+    jwt.verify(token, env.jwtSecret, (err, decoded) => {
         if (err) {
             console.log('Auth: Token invalide', err.message); // Log ajouté
             return res.status(403).json({

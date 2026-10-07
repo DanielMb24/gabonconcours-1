@@ -1,7 +1,8 @@
 // services/scanDocument.ts
 import axios, { AxiosError, AxiosResponse } from 'axios';
+import { BACKEND_ORIGIN } from './api';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = `${BACKEND_ORIGIN}/api`;
 
 export interface ScanResult {
     nom?: string;

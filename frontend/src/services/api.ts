@@ -141,7 +141,7 @@ export class ApiService {
     }
 
     async getAdmins<T>(): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>('/admins', 'GET');
+        return this.makeRequest<T>('/admin/management/admins', 'GET');
     }
 
     async getNiveaux<T>(): Promise<ApiResponse<T>> {
@@ -327,7 +327,7 @@ export class ApiService {
     }
 
     async sendReceiptByEmail<T>(nupcan: string, email: string): Promise<ApiResponse<T>> {
-        return this.makeRequest<T>('/email/send-receipt', 'POST', {nupcan, email});
+        return this.makeRequest<T>('/email/receipt', 'POST', {nupcan, email});
     }
 
     async createEtablissement<T>(data: any): Promise<ApiResponse<T>> {

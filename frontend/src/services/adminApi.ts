@@ -4,14 +4,14 @@ import {API_ORIGIN, ApiResponse} from "@/services/api.ts";
 const BASE_URL = `${API_ORIGIN}/admin`;
 const BASE_URL2 = API_ORIGIN;
 
- async function makeRequest<T>(url: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', data?: any): Promise<ApiResponse<T>> {
+  async function makeRequest<T>(url: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', data?: any): Promise<ApiResponse<T>> {
     try {
         const token = localStorage.getItem('adminToken');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         const response = await axios({
             method,
-            url: `${this.baseURL}${url}`,
+            url: `${BASE_URL2}${url}`,
             data,
             headers
         });

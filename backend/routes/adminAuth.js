@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
+const env = require('../config/env');
 const {authenticateAdmin} = require('../middleware/auth');
 
 // Middleware pour vérifier le rôle super-admin
@@ -32,6 +33,9 @@ router.post('/login', async (req, res) => {
             });
         }
 
+        if (!env.jwtSecret) {
+            return res.status(500).json({ success: false, message: 'Configuration serveur incomplète (JWT)' });
+        }
         const token = jwt.sign(
             {
                 adminId: admin.id,
@@ -43,8 +47,8 @@ router.post('/login', async (req, res) => {
                 email: admin.email,
                 admin_role: admin.admin_role
             },
-            process.env.JWT_SECRET || 'your_jwt_secret_key_here',
-            {expiresIn: '24h'}
+            env.jwtSecret,
+            {expiresIn: env.jwtExpiresIn || '24h'}
         );
 
         res.json({
