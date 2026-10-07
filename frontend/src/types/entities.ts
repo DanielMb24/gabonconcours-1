@@ -75,6 +75,7 @@ export interface Concours {
     updated_at: string;
     // Nouvelles propriétés pour les filières
     filieres?: ConcoursFiliere[];
+    type_concours?: string;
     // Documents requis (peut être string JSON ou array)
     documents_requis?: string | Array<{
         nom: string;

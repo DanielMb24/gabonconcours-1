@@ -19,7 +19,7 @@ const EnhancedAdminDashboard = () => {
         refetchInterval: 30000,
     });
 
-    const stats = statsData?.data || {};
+    const stats = (statsData?.data || {}) as any;
 
     // Récupérer les concours de l'établissement
     const { data: concoursData } = useQuery({

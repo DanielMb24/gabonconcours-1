@@ -12,6 +12,11 @@ export interface Document {
   obligatoire?: boolean;
   commentaire_validation?: string;
   nom_fichier?: string;
+  docdsr?: string;
+  ai_status?: 'disabled' | 'pending' | 'running' | 'completed' | 'failed';
+  ai_recommendation?: 'approve' | 'reject' | 'review' | null;
+  ai_confidence?: number | null;
+  ai_reason?: string;
   mime_type?: string;
   version?: number;
   created_at?: string;

@@ -12,7 +12,7 @@ interface ConcoursCardProps {
 
 const ConcoursCard: React.FC<ConcoursCardProps> = ({concours}) => {
     const navigate = useNavigate();
-    const montant = parseFloat(concours.fracnc);
+    const montant = parseFloat(String(concours.fracnc));
     const isGratuit = montant === 0;
     const dateDebut = new Date(concours.debcnc);
     const dateFin = new Date(concours.fincnc);
@@ -99,7 +99,7 @@ const ConcoursCard: React.FC<ConcoursCardProps> = ({concours}) => {
 
                     <div className="flex items-center text-sm text-muted-foreground">
                         <DollarSign className="w-4 h-4 mr-2"/>
-                        <span className="font-medium">{formatPrice(concours.fracnc)}</span>
+                        <span className="font-medium">{formatPrice(String(concours.fracnc))}</span>
                     </div>
 
                     <div className="flex items-center text-sm text-muted-foreground">

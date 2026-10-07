@@ -38,7 +38,13 @@ const Statistiques = () => {
     queryFn: () => apiService.getStatistics(),
   });
 
-  const statisticsData = stats?.data || {};
+  interface StatisticsData {
+    candidats?: { total?: number; complets?: number };
+    documents?: { total?: number; valides?: number; en_attente?: number; rejetes?: number };
+    paiements?: { total?: number; valides?: number; en_attente?: number; montant_total?: number };
+  }
+
+  const statisticsData: StatisticsData = (stats?.data as StatisticsData) || {};
 
   // Données pour les graphiques
   const documentStatusData = [
@@ -110,10 +116,10 @@ const Statistiques = () => {
               {statisticsData?.paiements?.valides || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {((statisticsData?.paiements?.valides / (statisticsData?.paiements?.total || 1)) * 100).toFixed(1)}% du total
+              {((statisticsData?.paiements?.valides || 0) / (statisticsData?.paiements?.total || 1) * 100).toFixed(1)}% du total
             </p>
             <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-green-600" style={{ width: `${((statisticsData?.paiements?.valides / (statisticsData?.paiements?.total || 1)) * 100)}%` }}></div>
+              <div className="h-full bg-green-600" style={{ width: `${((statisticsData?.paiements?.valides || 0) / (statisticsData?.paiements?.total || 1) * 100)}%` }}></div>
             </div>
           </CardContent>
         </Card>

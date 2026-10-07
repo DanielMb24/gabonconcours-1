@@ -30,9 +30,10 @@ const HomeAnnouncements = () => {
         try {
             const response = await apiService.getStatistics();
             if (response.success) {
+                const statsData = (response.data || {}) as any;
                 setStats({
-                    concoursActifs: response.data.concours || 0,
-                    candidatsInscrits: response.data.candidats || 0,
+                    concoursActifs: statsData.concours || 0,
+                    candidatsInscrits: statsData.candidats || 0,
                     tauxReussite: Math.floor(Math.random() * 30) + 60 // Simulation
                 });
             }

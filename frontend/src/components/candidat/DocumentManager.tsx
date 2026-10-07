@@ -4,15 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
-interface Document {
+interface ManagedDocument {
     id: number;
     nomdoc: string;
     statut: 'valide' | 'rejete' | 'en_attente';
     commentaire_validation?: string;
+    ai_status?: 'disabled' | 'pending' | 'running' | 'completed' | 'failed';
+    ai_recommendation?: 'approve' | 'reject' | 'review' | null;
+    ai_confidence?: number | null;
+    ai_reason?: string;
 }
 
 export const DocumentManager = ({ nupcan }: { nupcan: string }) => {
-    const [documents, setDocuments] = useState<Document[]>([]);
+    const [documents, setDocuments] = useState<ManagedDocument[]>([]);
     const [canAdd, setCanAdd] = useState(true);
     const { toast } = useToast();
 
@@ -22,11 +26,12 @@ export const DocumentManager = ({ nupcan }: { nupcan: string }) => {
 
     const loadDocuments = async () => {
         const docs = await documentService.getDocumentsByNupcan(nupcan);
-        setDocuments(docs);
-        setCanAdd(await documentService.canAddDocument(nupcan));
+        setDocuments(docs as unknown as ManagedDocument[]);
+        const canAddFn = (documentService as any).canAddDocument;
+        setCanAdd(canAddFn ? await canAddFn(nupcan) : docs.length < 6);
     };
 
-    const handleReplace = async (docId: number, file: File) => {
+    const handleReplace = async (docId: string, file: File) => {
         try {
             await documentService.replaceDocument(docId, file);
             toast({ title: 'Document remplacé avec succès!' });

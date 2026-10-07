@@ -333,7 +333,7 @@ const ConcoursBasedDashboard = () => {
 
     const {data: candidatures, isLoading: isLoadingCandidatures} = useQuery({
         queryKey: ['adminCandidatures', selectedConcours],
-        queryFn: () => adminCandidatureService.getAllCandidaturesByConcours(selectedConcours!),
+        queryFn: () => adminCandidatureService.getAllCandidaturesByConcours(Number(selectedConcours!)),
         enabled: !!selectedConcours && !!token, // Assure que la requête ne se lance que si selectedConcours est défini
         retry: 2,
     });

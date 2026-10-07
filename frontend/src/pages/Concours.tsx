@@ -82,7 +82,7 @@ const Concours = () => {
             for (const c of concours) {
                 try {
                     const response = await apiService.makeRequest(`/concours/${c.id}/filieres`, 'GET');
-                    map[c.id] = response.data || [];
+                    map[c.id] = (response.data || []) as any[];
                 } catch (error) {
                     map[c.id] = [];
                 }

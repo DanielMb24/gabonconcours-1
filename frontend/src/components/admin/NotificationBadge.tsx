@@ -21,7 +21,7 @@ const NotificationBadge = () => {
         queryKey: ['notifications', admin?.id],
         queryFn: async () => {
             const response = await apiService.makeRequest('/notifications/unread', 'GET');
-            return response.data;
+            return (response.data || []) as any[];
         },
         refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
         enabled: !!admin

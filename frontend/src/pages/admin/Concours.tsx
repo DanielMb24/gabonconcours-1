@@ -187,9 +187,9 @@ const Concours = () => {
                                             {/* Statut Actif */}
                                             <TableCell className="text-center">
                                                 {concoursItem.stacnc === '1' ? (
-                                                    <CheckCircle className="h-5 w-5 text-green-500 mx-auto" title="Concours Actif"/>
+                                                    <CheckCircle className="h-5 w-5 text-green-500 mx-auto" aria-label="Concours Actif"/>
                                                 ) : (
-                                                    <XCircle className="h-5 w-5 text-red-500 mx-auto" title="Concours Inactif"/>
+                                                    <XCircle className="h-5 w-5 text-red-500 mx-auto" aria-label="Concours Inactif"/>
                                                 )}
                                             </TableCell>
 

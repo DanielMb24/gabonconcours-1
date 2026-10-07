@@ -15,7 +15,7 @@ const NotificationAlerts = () => {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const statisticsData = stats?.data || {};
+  const statisticsData = (stats?.data || {}) as any;
   
   const newCandidates = statisticsData?.candidats?.en_attente || 0;
   const pendingDocuments = statisticsData?.documents?.en_attente || 0;

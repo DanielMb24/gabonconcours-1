@@ -77,7 +77,7 @@ class AdminActionService {
                 'GET'
             );
             
-            return response.data || [];
+            return (Array.isArray(response.data) ? response.data : []) as any[];
         } catch (error) {
             console.error('Erreur récupération stats:', error);
             return [];

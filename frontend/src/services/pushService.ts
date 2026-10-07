@@ -1,9 +1,11 @@
 import { apiService } from './api';
 
-const urlBase64ToUint8Array = (base64: string): Uint8Array => {
+const urlBase64ToUint8Array = (base64: string): Uint8Array<ArrayBuffer> => {
     const padding = '='.repeat((4 - (base64.length % 4)) % 4);
     const raw = window.atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
-    return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
+    const output = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+    return output;
 };
 
 /**

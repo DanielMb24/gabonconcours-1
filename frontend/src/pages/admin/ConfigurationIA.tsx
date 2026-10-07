@@ -73,7 +73,7 @@ const ConfigurationIA = () => {
   });
 
   useEffect(() => {
-    setRequirements(requirementsQuery.data?.documents_requis || []);
+    setRequirements(((requirementsQuery.data || {}) as any)?.documents_requis || []);
     setChatMessages([]);
   }, [requirementsQuery.data]);
 

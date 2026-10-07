@@ -28,7 +28,7 @@ const GestionConcoursFilieresPage = () => {
         queryKey: ['etablissements'],
         queryFn: async () => {
             const response = await apiService.makeRequest('/etablissements', 'GET');
-            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            return Array.isArray(response.data) ? response.data : ((response.data as any)?.data || []);
         }
     });
 
@@ -41,7 +41,7 @@ const GestionConcoursFilieresPage = () => {
                 `/concours?etablissement_id=${selectedEtablissement}`, 
                 'GET'
             );
-            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            return Array.isArray(response.data) ? response.data : ((response.data as any)?.data || []);
         },
         enabled: !!selectedEtablissement
     });
@@ -218,10 +218,10 @@ const GestionConcoursFilieresPage = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="flex gap-4">
+                            <div className="flex-1">
                             <Select 
                                 value={selectedFiliere} 
                                 onValueChange={setSelectedFiliere}
-                                className="flex-1"
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Sélectionner une filière" />
@@ -229,13 +229,14 @@ const GestionConcoursFilieresPage = () => {
                                 <SelectContent>
                                     {filieres?.filter((f: any) => 
                                         !concoursFilieresAssociees?.some((cf: any) => cf.filiere_id === f.id)
-                                    ).map((filiere: any) => (
-                                        <SelectItem key={filiere.id} value={filiere.id.toString()}>
-                                            {filiere.nom}
+                                    ).map((filiere: any, index: number) => (
+                                        <SelectItem key={String(filiere?.id ?? index)} value={String(filiere?.id ?? '')}>
+                                            {filiere?.nom ?? 'Filière'}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                            </div>
                             <Button 
                                 onClick={handleAddAssociation}
                                 disabled={!selectedFiliere || addAssociationMutation.isPending}
@@ -295,11 +296,13 @@ const GestionConcoursFilieresPage = () => {
 
             {/* Modales */}
             <ErrorModal
+                title="Erreur"
                 isOpen={showErrorModal}
                 onClose={() => setShowErrorModal(false)}
                 message={errorMessage}
             />
             <SuccessModal
+                title="Succès"
                 isOpen={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
                 message={successMessage}

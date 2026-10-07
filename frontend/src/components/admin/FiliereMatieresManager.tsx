@@ -85,7 +85,7 @@ const FiliereMatieresManager: React.FC<FiliereMatieresManagerProps> = ({
                 `/filiere-matieres/coefficients/${filiereId}`,
                 'GET'
             );
-            return response.data || {};
+            return (response.data || {}) as any;
         }
     });
 

@@ -46,16 +46,17 @@ const Logs: React.FC = () => {
   const { data: logsData, isLoading } = useQuery({
     queryKey: ['admin-logs', actionFilter, dateFilter],
     queryFn: async () => {
-      const response = await apiService.makeRequest('/admin-logs', 'GET', undefined, {
-        action_type: actionFilter !== 'all' ? actionFilter : undefined,
-        start_date: dateFilter !== 'all' ? dateFilter : undefined,
-      });
+      const params = new URLSearchParams();
+      if (actionFilter !== 'all') params.append('action_type', actionFilter);
+      if (dateFilter !== 'all') params.append('start_date', dateFilter);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const response = await apiService.makeRequest(`/admin-logs${query}`, 'GET');
       return response.data;
     },
     refetchInterval: 30000,
   });
 
-  const logs: AdminLog[] = logsData || [];
+  const logs: AdminLog[] = (logsData || []) as AdminLog[];
 
   const filteredLogs = logs.filter((log) => {
     const searchLower = searchTerm.toLowerCase();

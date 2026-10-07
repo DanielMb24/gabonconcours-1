@@ -26,8 +26,8 @@ class MyPVITService {
      */
     async initPayment(data: MyPVITPaymentRequest): Promise<MyPVITPaymentResponse> {
         try {
-            const response = await api.post('/mypvit/init', data);
-            return response;
+            const response = await api.post<MyPVITPaymentResponse>('/mypvit/init', data);
+            return response.data;
         } catch (error: any) {
             console.error('Erreur initPayment MyPVIT:', error);
             return {

@@ -21,7 +21,7 @@ export default function AdminLogsView() {
                 apiService.makeRequest('/admin-logs/stats', 'GET')
             ]);
 
-            if (logsRes.data) setLogs(logsRes.data);
+            if (logsRes.data) setLogs(logsRes.data as any[]);
             if (statsRes.data) setStats(statsRes.data);
         } catch (error) {
             console.error('Erreur chargement logs:', error);

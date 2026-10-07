@@ -78,9 +78,9 @@ const ConcoursDetails: React.FC = () => {
         enabled: !!id,
     });
 
-    const concours = concoursData || {};
-    const candidatures: Candidat[] = candidaturesData || [];
-    const filieres = filieresData || [];
+    const concours = (concoursData || {}) as any;
+    const candidatures: Candidat[] = (candidaturesData || []) as Candidat[];
+    const filieres = (filieresData || []) as any[];
 
     // Filtrer les candidatures
     const candidaturesFiltrees = candidatures.filter((candidat) => {

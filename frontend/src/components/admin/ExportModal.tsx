@@ -86,8 +86,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose, concoursList }
         await exportService.exportCandidatesExcel(selectedConcours);
       } else {
         await exportService.exportCandidatesPDF(
-          selectedConcours,
-          selectedFiliere || undefined
+          selectedConcours
         );
       }
 
@@ -153,7 +152,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose, concoursList }
                 {concoursList.length > 0 ? (
                   concoursList.map((c) => (
                     <SelectItem key={c.id} value={c.id.toString()}>
-                      {c.libcnc} ({c.sesccnc})
+                      {c.libcnc} ({c.sescnc})
                     </SelectItem>
                   ))
                 ) : (
