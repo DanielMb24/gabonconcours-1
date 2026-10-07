@@ -1,5 +1,6 @@
 const { Candidate, Contest, Program, Application, Counter } = require('../models/mongo');
 const { AppError } = require('../utils/api');
+const { normalizePhone, phoneVariants } = require('../utils/phone');
 async function nextNupcan(now = new Date()) {
   const year = now.getUTCFullYear();
   const counter = await Counter.findByIdAndUpdate(`nupcan:${year}`, { $inc: { seq: 1 } }, { new: true, upsert: true, setDefaultsOnInsert: true });
@@ -20,6 +21,12 @@ async function createApplication(input) {
   const email = input.candidate?.email?.trim().toLowerCase() || undefined;
   if (!input.candidateId && email && await Candidate.exists({ email })) {
     throw new AppError(409, 'CANDIDATE_EMAIL_ALREADY_EXISTS', 'Cette adresse e-mail appartient déjà à un candidat. Utilisez son NIPCAN pour une nouvelle candidature.');
+  }
+  // Anti-doublon téléphone : nom et prénom peuvent se répéter, pas le numéro
+  // (toutes écritures confondues : espaces, 00 ou + en préfixe).
+  const accountPhone = normalizePhone(input.candidate?.phone);
+  if (!input.candidateId && accountPhone && await Candidate.exists({ $or: [{ accountPhone: { $in: phoneVariants(accountPhone) } }, { phone: { $in: phoneVariants(accountPhone) } }] })) {
+    throw new AppError(409, 'ACCOUNT_EXISTS', 'Ce téléphone est déjà associé à un compte. Connectez-vous.');
   }
   const candidate = input.candidateId
     ? await Candidate.findById(input.candidateId)

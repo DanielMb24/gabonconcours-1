@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 const env = require('./config/env');
 const { correlation, notFound, errorHandler } = require('./utils/api');
 function createApp() {
@@ -30,7 +31,10 @@ function createApp() {
     origin(origin, cb) {
       const normalizedOrigin = origin?.replace(/\/$/, '');
       if (!normalizedOrigin || allowedCorsOrigins.has(normalizedOrigin)) return cb(null, true);
-      cb(new Error('Origine CORS refusée'));
+      const err = new Error('Origine CORS refusée');
+      err.status = 403;
+      err.code = 'CORS_FORBIDDEN';
+      return cb(err);
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -38,9 +42,12 @@ function createApp() {
     optionsSuccessStatus: 204,
   };
   app.use(cors(corsOptions));
-  app.options('*', cors(corsOptions));
+  app.options(/.*/, cors(corsOptions));
   app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
   app.use(express.json({ limit: '1mb', verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); } }), express.urlencoded({ extended: false, limit: '1mb' }), cookieParser());
+  // Anti-injection NoSQL : supprime les clés $ et . des entrées (body/query/params).
+  // Les requêtes Mongo sont construites côté serveur : aucun usage légitime impacté.
+  app.use(mongoSanitize());
   app.use('/api/v1', require('./routes/v1'));
   app.use(notFound, errorHandler); return app;
 }
