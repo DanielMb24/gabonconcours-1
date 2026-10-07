@@ -16,10 +16,6 @@ export interface Document {
   version?: number;
   created_at?: string;
   updated_at?: string;
-  ai_status?: 'disabled' | 'pending' | 'running' | 'completed' | 'failed';
-  ai_recommendation?: 'approve' | 'reject' | 'review' | null;
-  ai_confidence?: number | null;
-  ai_reason?: string;
 }
 
 export interface DocumentRequirement {
@@ -46,8 +42,6 @@ const mapDocument = (doc: any): Document => ({
   requirement_id: doc?.requirement_id, obligatoire: doc?.obligatoire,
   commentaire_validation: doc?.commentaire_validation, nom_fichier: doc?.nom_fichier,
   mime_type: doc?.mime_type, version: doc?.version, created_at: doc?.created_at, updated_at: doc?.updated_at,
-  ai_status: doc?.ai_status || 'disabled', ai_recommendation: doc?.ai_recommendation || null,
-  ai_confidence: doc?.ai_confidence ?? null, ai_reason: doc?.ai_reason || '',
 });
 
 export interface DocumentData {
@@ -81,14 +75,23 @@ export const documentService = {
 
   async getChecklist(nupcan: string): Promise<DocumentChecklist> {
     const response = await api.get(candidatePortalRoutes.documentChecklist(nupcan));
-    const data = (response as any)?.data?.data ?? { checklist: [], supplemental: [] };
+    const data = response.data.data || {};
     const checklist = Array.isArray(data.checklist) ? data.checklist : [];
     const supplemental = Array.isArray(data.supplemental) ? data.supplemental : [];
-    return { ...data, checklist: checklist.map((item: any) => ({ requirement: item?.requirement, document: item?.document ? mapDocument(item.document) : null })), supplemental: supplemental.map(mapDocument) };
+    const summary = data.summary || { required: 0, submitted: 0, approved: 0, missing: 0, rejected: 0 };
+    return {
+      nupcan: data.nupcan || nupcan,
+      checklist: checklist.map((item: any) => ({ requirement: item?.requirement, document: item?.document ? mapDocument(item.document) : null })),
+      supplemental: supplemental.map(mapDocument),
+      summary,
+    };
   },
 
   async uploadDocument(formData: FormData): Promise<Document> {
     try {
+      if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+        throw new Error('Connexion perdue : reconnectez-vous à internet puis réessayez.');
+      }
       const response = await api.post('/documents', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
