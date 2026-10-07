@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import GabonFlag from './GabonFlag';
 import {
     GraduationCap,
     Mail,
@@ -139,7 +140,8 @@ const Footer: React.FC = () => {
                 {/* Bottom Bar */}
                 <div className="mt-12 pt-8 border-t border-white/10">
                     <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-                        <p className="text-gray-400 text-sm text-center md:text-left">
+                        <p className="flex items-center gap-2 text-gray-400 text-sm text-center md:text-left">
+                            <GabonFlag width={22} />
                             © {currentYear} GABConcours. Tous droits réservés.
                         </p>
                         <div className="flex space-x-6 text-sm">

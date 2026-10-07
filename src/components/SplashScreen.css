@@ -48,11 +48,10 @@
 
 .gc-splash-logo-wrap {
     position: relative;
-    width: 128px;
-    height: 128px;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 18px;
 }
 
 /* Anneaux pulsants derrière le logo */
@@ -61,7 +60,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 32px;
+    border-radius: 34px;
     border: 2px solid rgba(255, 255, 255, 0.55);
     animation: gc-splash-ring 1.8s ease-out infinite;
 }
@@ -72,22 +71,34 @@
 
 .gc-splash-logo {
     position: relative;
-    width: 104px;
-    height: 104px;
     border-radius: 26px;
     background: #ffffff;
-    color: #1d4ed8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 48px;
-    font-weight: 900;
-    font-family: Arial, Helvetica, sans-serif;
-    letter-spacing: -2px;
+    padding: 20px 30px;
+    overflow: hidden;
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
     animation:
         gc-splash-pop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both,
         gc-splash-float 2.2s ease-in-out 0.65s infinite;
+}
+
+.gc-splash-logo img {
+    display: block;
+    width: min(300px, 68vw);
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Balayage lumineux sur la carte logo */
+.gc-splash-logo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 40%, rgba(29, 78, 216, 0.18) 50%, transparent 60%);
+    background-size: 250% 100%;
+    animation: gc-splash-shine 1.4s linear 0.5s;
+    pointer-events: none;
 }
 
 .gc-splash-name {
