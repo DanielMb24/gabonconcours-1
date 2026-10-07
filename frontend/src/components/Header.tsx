@@ -15,6 +15,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import GabonFlag from './GabonFlag';
 
 const Header: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -40,6 +41,7 @@ const Header: React.FC = () => {
                         <span className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
               GABConcours
             </span>
+                        <GabonFlag width={26} />
                     </Link>
 
                     {/* Desktop Navigation */}
