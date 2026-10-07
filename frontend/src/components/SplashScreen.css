@@ -1,7 +1,7 @@
-/* Écran de lancement animé GabConcours (PWA).
- * Séquence (~2 s) : orbes de fond en dérive, logo GC avec anneaux
- * pulsants, nom avec balayage lumineux, barre de progression 0→100 %,
- * sortie en fondu avec léger zoom. Durée pilotée par App.tsx (2050 ms).
+/* Écran de lancement GabConcours (PWA) — volontairement sobre :
+ * apparition unique en fondu, logo fixe, fine barre de progression,
+ * sortie en fondu. Aucune animation en boucle. Durée pilotée par
+ * App.tsx (démontage à 2050 ms).
  */
 .gc-splash {
     position: fixed;
@@ -13,37 +13,8 @@
     justify-content: center;
     gap: 20px;
     overflow: hidden;
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 55%, #172554 100%);
+    background: linear-gradient(160deg, #1e40af 0%, #172554 100%);
     animation: gc-splash-hide 0.4s ease-in 1.7s forwards;
-}
-
-/* Orbes lumineux d'arrière-plan en dérive lente */
-.gc-splash::before,
-.gc-splash::after {
-    content: "";
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(70px);
-    opacity: 0.5;
-    pointer-events: none;
-}
-
-.gc-splash::before {
-    width: 340px;
-    height: 340px;
-    left: -110px;
-    top: -90px;
-    background: #60a5fa;
-    animation: gc-splash-drift 2.2s ease-in-out infinite alternate;
-}
-
-.gc-splash::after {
-    width: 300px;
-    height: 300px;
-    right: -100px;
-    bottom: -80px;
-    background: #38bdf8;
-    animation: gc-splash-drift 2.6s ease-in-out infinite alternate-reverse;
 }
 
 .gc-splash-logo-wrap {
@@ -54,31 +25,14 @@
     padding: 18px;
 }
 
-/* Anneaux pulsants derrière le logo */
-.gc-splash-logo-wrap::before,
-.gc-splash-logo-wrap::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 34px;
-    border: 2px solid rgba(255, 255, 255, 0.55);
-    animation: gc-splash-ring 1.8s ease-out infinite;
-}
-
-.gc-splash-logo-wrap::after {
-    animation-delay: 0.9s;
-}
-
 .gc-splash-logo {
     position: relative;
-    border-radius: 26px;
+    border-radius: 14px;
     background: #ffffff;
     padding: 20px 30px;
     overflow: hidden;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-    animation:
-        gc-splash-pop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-        gc-splash-float 2.2s ease-in-out 0.65s infinite;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+    animation: gc-splash-enter 0.55s ease-out both;
 }
 
 .gc-splash-logo img {
@@ -89,56 +43,32 @@
     -webkit-user-drag: none;
 }
 
-/* Balayage lumineux sur la carte logo */
-.gc-splash-logo::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(105deg, transparent 40%, rgba(29, 78, 216, 0.18) 50%, transparent 60%);
-    background-size: 250% 100%;
-    animation: gc-splash-shine 1.4s linear 0.5s;
-    pointer-events: none;
-}
-
 .gc-splash-name {
     position: relative;
     color: #ffffff;
-    font-size: 28px;
-    font-weight: 800;
+    font-size: 26px;
+    font-weight: 700;
     letter-spacing: 0.5px;
     margin: 0;
-    background: linear-gradient(100deg, #ffffff 35%, #bfdbfe 50%, #ffffff 65%);
-    background-size: 220% 100%;
-    animation:
-        gc-splash-rise 0.55s ease-out 0.3s both,
-        gc-splash-shine 1.6s linear 0.6s;
-}
-
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-    .gc-splash-name {
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+    animation: gc-splash-rise 0.5s ease-out 0.25s both;
 }
 
 .gc-splash-tagline {
     position: relative;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 14px;
     margin: -12px 0 0;
-    animation: gc-splash-rise 0.55s ease-out 0.45s both;
+    animation: gc-splash-rise 0.5s ease-out 0.4s both;
 }
 
 .gc-splash-bar {
     position: relative;
-    width: 190px;
-    height: 6px;
+    width: 180px;
+    height: 4px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.22);
     overflow: hidden;
-    animation: gc-splash-rise 0.5s ease-out 0.55s both;
+    animation: gc-splash-rise 0.45s ease-out 0.5s both;
 }
 
 .gc-splash-bar::after {
@@ -147,60 +77,30 @@
     height: 100%;
     width: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #ffffff, #bfdbfe);
+    background: #ffffff;
     transform-origin: left center;
-    animation: gc-splash-fill 1.15s cubic-bezier(0.3, 0.7, 0.4, 1) 0.55s both;
+    animation: gc-splash-fill 1.1s ease-out 0.5s both;
 }
 
-@keyframes gc-splash-pop {
+@keyframes gc-splash-enter {
     from {
         opacity: 0;
-        transform: scale(0.55) rotate(-8deg);
+        transform: scale(0.96);
     }
     to {
         opacity: 1;
-        transform: scale(1) rotate(0deg);
-    }
-}
-
-@keyframes gc-splash-float {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-7px);
-    }
-}
-
-@keyframes gc-splash-ring {
-    from {
-        opacity: 0.8;
-        transform: scale(0.82);
-    }
-    to {
-        opacity: 0;
-        transform: scale(1.28);
+        transform: scale(1);
     }
 }
 
 @keyframes gc-splash-rise {
     from {
         opacity: 0;
-        transform: translateY(12px);
+        transform: translateY(8px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
-    }
-}
-
-@keyframes gc-splash-shine {
-    from {
-        background-position: 120% 0;
-    }
-    to {
-        background-position: -120% 0;
     }
 }
 
@@ -213,29 +113,15 @@
     }
 }
 
-@keyframes gc-splash-drift {
-    from {
-        transform: translate(0, 0) scale(1);
-    }
-    to {
-        transform: translate(26px, 20px) scale(1.12);
-    }
-}
-
 @keyframes gc-splash-hide {
     to {
         opacity: 0;
         visibility: hidden;
-        transform: scale(1.06);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .gc-splash,
-    .gc-splash::before,
-    .gc-splash::after,
-    .gc-splash-logo-wrap::before,
-    .gc-splash-logo-wrap::after,
     .gc-splash-logo,
     .gc-splash-name,
     .gc-splash-tagline,
