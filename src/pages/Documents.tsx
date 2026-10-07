@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { useCandidature } from '@/hooks/useCandidature';
 import { apiService } from '@/services/api';
+import { fileExtension } from '@/utils/documentFile';
 
 interface RequirementItem {
   id: string;
@@ -221,18 +222,33 @@ const Documents = () => {
   const validateFileForSlot = (file: File, slot?: UploadSlot) => {
     const allowedMimeTypes =
       slot?.acceptedMimeTypes?.length ? slot.acceptedMimeTypes : DEFAULT_MIME_TYPES;
-    const maxSizeBytes = slot?.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES;
+    // Plafond plateforme (fonctions serverless ~4,5 Mo) : même si l'exigence
+    // autorise davantage, tout fichier plus lourd échouerait en ligne.
+    const maxSizeBytes = Math.min(slot?.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES, 4 * 1024 * 1024);
 
     if (file.size > maxSizeBytes) {
       toast({
         title: 'Fichier trop volumineux',
-        description: `La taille maximale autorisée est ${(maxSizeBytes / (1024 * 1024)).toFixed(0)} Mo.`,
+        description: `La taille maximale en ligne est de 4 Mo (fichier : ${(file.size / (1024 * 1024)).toFixed(1)} Mo).`,
         variant: 'destructive',
       });
       return false;
     }
 
-    if (!allowedMimeTypes.includes(file.type)) {
+    // Sur mobile le type MIME peut être vide : repli sur l'extension.
+    // HEIC (iPhone) refusé avec consigne de conversion.
+    const extension = fileExtension(file.name);
+    if (['heic', 'heif', 'heics'].includes(extension)) {
+      toast({
+        title: 'Format non accepté',
+        description: 'Photo iPhone (HEIC) : convertissez-la en JPEG/PNG puis réessayez.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    const EXTENSION_MIME: Record<string, string> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+    const effectiveType = file.type || EXTENSION_MIME[extension] || '';
+    if (!effectiveType || !allowedMimeTypes.includes(effectiveType)) {
       toast({
         title: 'Format non autorisé',
         description: `Cette pièce accepte ${allowedMimeTypes.join(', ')}.`,
@@ -530,7 +546,7 @@ const Documents = () => {
               <p className="text-xs text-muted-foreground">{doc.description}</p>
             ) : null}
             <p className="text-xs text-muted-foreground">
-              Formats: {formatMimeTypes(doc.acceptedMimeTypes)}. Taille max: {Math.round((doc.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES) / (1024 * 1024))} Mo
+              Formats: {formatMimeTypes(doc.acceptedMimeTypes)}. Taille max: {Math.min(Math.round((doc.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES) / (1024 * 1024)), 4)} Mo
             </p>
             {hasPending ? (
               <p className="truncate text-xs font-medium text-emerald-700 dark:text-emerald-300">

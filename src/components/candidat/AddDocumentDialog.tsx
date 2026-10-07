@@ -162,7 +162,7 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
                             </p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                            Formats acceptés: PDF, JPG, JPEG, PNG (max 10MB)
+                            Formats acceptés: PDF, JPG, JPEG, PNG, WebP (max 4 Mo)
                         </p>
                     </div>
 

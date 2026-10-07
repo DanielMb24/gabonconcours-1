@@ -98,40 +98,73 @@ export class ApiService {
         }
     }
 
-    async makeFormDataRequest<T>(url: string, method: string, formData: FormData): Promise<ApiResponse<T>> {
+    async makeFormDataRequest<T>(url: string, method: string, formData: FormData, options?: { timeout?: number }): Promise<ApiResponse<T>> {
+        // IMPORTANT : envoi via fetch SANS fixer Content-Type. Le navigateur
+        // génère alors multipart/form-data AVEC boundary ; un Content-Type
+        // forcé sans boundary rend le corps illisible par le serveur
+        // (échec systématique des téléversements).
         try {
             console.log('API: Envoi FormData vers', url);
 
-            const response = await axios({
-                url: `${this.baseUrl}${url}`,
-                method,
-                data: formData,
-                timeout: 30000,
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    'X-Candidate-Token': localStorage.getItem('candidate_token') || '',
-                    ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
-                },
-            });
-
-            return response.data;
-        } catch (error: any) {
-            console.error(`Erreur lors de la requête FormData vers ${url}:`, error);
-
-            if (error.response && error.response.data) {
+            if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
                 return {
                     success: false,
-                    message: error.response.data.message || 'Erreur lors de la requête',
-                    errors: error.response.data.errors || [error.message],
-                    status: error.response.status,
+                    message: 'Connexion perdue : reconnectez-vous à internet puis réessayez.',
+                    errors: ['OFFLINE'],
                 };
             }
 
+            const timeoutMs = options?.timeout ?? 60000;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            let response: Response;
+            try {
+                response = await fetch(`${this.baseUrl}${url}`, {
+                    method,
+                    body: formData,
+                    headers: {
+                        'X-Candidate-Token': localStorage.getItem('candidate_token') || '',
+                        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+                    },
+                    signal: controller.signal,
+                });
+            } finally {
+                clearTimeout(timer);
+            }
+
+            const text = await response.text();
+            let payload: any = null;
+            try {
+                payload = text ? JSON.parse(text) : null;
+            } catch {
+                payload = null; // réponse non-JSON (ex. erreur brute 413/500)
+            }
+
+            if (!response.ok || (payload && payload.success === false)) {
+                const tooLarge = response.status === 413;
+                return {
+                    success: false,
+                    message: payload?.message || (tooLarge ? 'Fichier trop volumineux pour le serveur : réduisez la taille (4 Mo maximum).' : `Échec de l'envoi (${response.status}).`),
+                    errors: payload?.errors || [payload?.message || `HTTP ${response.status}`],
+                    status: response.status,
+                };
+            }
+
+            return (payload || { success: true, data: null }) as ApiResponse<T>;
+        } catch (error: any) {
+            console.error(`Erreur lors de la requête FormData vers ${url}:`, error);
+            const aborted = error?.name === 'AbortError';
+            const offline = typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine;
+
             return {
                 success: false,
-                message: 'Erreur inconnue lors de la requête',
-                errors: [error.message],
-                status: error.response?.status,
+                message: aborted && !offline
+                    ? "Le serveur met trop de temps à répondre. Réduisez la taille du fichier et réessayez."
+                    : offline || error?.message === 'Failed to fetch'
+                        ? 'Connexion perdue ou serveur injoignable. Vérifiez internet puis réessayez.'
+                        : 'Erreur inconnue lors de la requête',
+                errors: [error?.message || 'UNKNOWN_ERROR'],
+                status: error?.response?.status,
             };
         }
     }

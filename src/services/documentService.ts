@@ -88,61 +88,47 @@ export const documentService = {
   },
 
   async uploadDocument(formData: FormData): Promise<Document> {
-    try {
-      if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
-        throw new Error('Connexion perdue : reconnectez-vous à internet puis réessayez.');
-      }
-      const response = await api.post('/documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const doc = response.data.data;
-      return {
-        id: String(doc?.id ?? ''),
-        nomdoc: doc?.nomdoc ?? '',
-        type: doc?.type ?? '',
-        document_statut: doc?.statut || 'en_attente',
-        url: doc?.docdsr || doc?.nom_fichier || '',
-        taille: doc?.taille,
-      };
-    } catch (error: any) {
-      console.error('Error uploading document:', error);
-      throw new Error(error.response?.data?.message || 'Échec du téléversement du document');
-    }
+    // Passe par makeFormDataRequest (fetch natif) : le seul transport
+    // qui envoie multipart AVEC boundary (axios + Content-Type forcé casse l'upload).
+    const response = await apiService.makeFormDataRequest<any>('/documents', 'POST', formData);
+    if (!response.success) throw new Error(response.message || 'Échec du téléversement du document');
+    const doc = response.data;
+    return {
+      id: String(doc?.id ?? ''),
+      nomdoc: doc?.nomdoc ?? '',
+      type: doc?.type ?? '',
+      document_statut: doc?.statut || 'en_attente',
+      url: doc?.docdsr || doc?.nom_fichier || '',
+      taille: doc?.taille,
+    };
   },
 
   async replaceDocument(id: string, data: File | FormData): Promise<Document> {
-    try {
-      let formData: FormData;
+    let formData: FormData;
 
-      if (data instanceof FormData) {
-        formData = data;
-      } else {
-        formData = new FormData();
-        formData.append('file', data);
-      }
-
-      console.log('Remplacement document ID:', id);
-      const response = await api.put(`/documents/${id}/replace`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      console.log('Réponse remplacement:', response.data);
-      const doc = response.data.data;
-
-     return {
-  id: String(doc?.id ?? id),
-  nomdoc: doc?.nomdoc || '',
-  type: doc?.type || '',
-  document_statut: doc?.statut || doc?.document_statut || 'en_attente',
-  url: doc?.docdsr || doc?.nom_fichier || doc?.chemin_fichier || '',
-  taille: doc?.taille || doc?.taille_fichier || 0,
-  docdsr: doc.docdsr || '',
-};
-
-    } catch (error: any) {
-      console.error('Erreur lors du remplacement du document :', error);
-      throw new Error(error.response?.data?.message || 'Échec du remplacement du document');
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      formData.append('file', data);
     }
+
+    console.log('Remplacement document ID:', id);
+    const response = await apiService.makeFormDataRequest<any>(`/documents/${id}/replace`, 'PUT', formData);
+
+    console.log('Réponse remplacement:', response.data);
+    if (!response.success) throw new Error(response.message || 'Échec du remplacement du document');
+    const doc = response.data;
+
+    return {
+      id: String(doc?.id ?? id),
+      nomdoc: doc?.nomdoc || '',
+      type: doc?.type || '',
+      document_statut: doc?.statut || doc?.document_statut || 'en_attente',
+      url: doc?.docdsr || doc?.nom_fichier || doc?.chemin_fichier || '',
+      taille: doc?.taille || doc?.taille_fichier || 0,
+      docdsr: doc?.docdsr || '',
+    };
   },
 
   async updateDocument(id: string, file: File): Promise<Document> {
