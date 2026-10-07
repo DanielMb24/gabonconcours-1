@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Loader2, FileText } from 'lucide-react';
-import { apiService } from '@/services/api';
+import { documentService } from '@/services/documentService';
+import { validateDocumentFile } from '@/utils/documentFile';
 
 interface AddDocumentDialogProps {
     open: boolean;
@@ -39,42 +40,34 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
     const [nomdoc, setNomdoc] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const remainingSlots = 6 - currentTotal;
+    const remainingSlots = Number.isFinite(currentTotal) ? Math.max(0, 6 - currentTotal) : 6;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const selectedFile = e.target.files[0];
-            // Validation type et taille
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-            if (!allowedTypes.includes(selectedFile.type)) {
-                toast({
-                    title: 'Format non supporté',
-                    description: 'Seuls les fichiers PDF, JPG, JPEG et PNG sont acceptés',
-                    variant: 'destructive'
-                });
-                return;
-            }
-            if (selectedFile.size > maxSize) {
-                toast({
-                    title: 'Fichier trop volumineux',
-                    description: 'Le fichier ne doit pas dépasser 10MB',
-                    variant: 'destructive'
-                });
-                return;
-            }
-
-            setFile(selectedFile);
+        const selectedFile = e.target.files?.[0];
+        // Permet de re-sélectionner le même fichier (surtout sur mobile).
+        e.target.value = '';
+        if (!selectedFile) return;
+        const check = validateDocumentFile(selectedFile);
+        if (!check.ok) {
+            toast({
+                title: 'Fichier refusé',
+                description: check.error || 'Fichier invalide',
+                variant: 'destructive'
+            });
+            return;
         }
+
+        setFile(selectedFile);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!file || !nomdoc) {
+        const name = nomdoc.trim();
+        if (!file || !name) {
             toast({
                 title: 'Champs requis',
-                description: 'Veuillez remplir tous les champs',
+                description: 'Indiquez le nom du document et choisissez un fichier',
                 variant: 'destructive'
             });
             return;
@@ -92,32 +85,24 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
         setIsSubmitting(true);
 
         try {
+            // Route réelle POST /documents (document supplémentaire, sans exigence liée).
             const formData = new FormData();
             formData.append('nupcan', nupcan);
-            formData.append('nomdoc', nomdoc);
+            formData.append('nomdoc', name.slice(0, 120));
             formData.append('file', file);
-            formData.append('type', file.type.includes('pdf') ? 'pdf' : 'image');
 
-            const response = await apiService.makeFormDataRequest(
-                '/documents/candidate/add',
-                'POST',
-                formData
-            );
+            await documentService.uploadDocument(formData);
 
-            if (response.success) {
-                toast({
-                    title: 'Document ajouté',
-                    description: 'Votre document a été ajouté avec succès et est en attente de validation'
-                });
+            toast({
+                title: 'Document ajouté',
+                description: 'Votre document a été ajouté avec succès et est en attente de validation'
+            });
 
-                setFile(null);
-                setNomdoc('');
-                onOpenChange(false);
+            setFile(null);
+            setNomdoc('');
+            onOpenChange(false);
 
-                if (onSuccess) onSuccess();
-            } else {
-                throw new Error(response.message || 'Erreur lors de l\'ajout');
-            }
+            if (onSuccess) onSuccess();
         } catch (error: any) {
             console.error('Erreur ajout document:', error);
             toast({

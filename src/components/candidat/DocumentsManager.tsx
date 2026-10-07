@@ -11,6 +11,7 @@ import ErrorModal from '@/components/modals/ErrorModal';
 import SuccessModal from '@/components/modals/SuccessModal';
 import DocumentDetailsDialog from './DocumentDetailsDialog';
 import { documentService, type Document, type DocumentRequirement } from '@/services/documentService';
+import { validateDocumentFile } from '@/utils/documentFile';
 
 const DocumentsManager = ({ nupcan }: { nupcan: string }) => {
   const queryClient = useQueryClient();
@@ -23,8 +24,8 @@ const DocumentsManager = ({ nupcan }: { nupcan: string }) => {
   const query = useQuery({ queryKey: ['document-checklist', nupcan], queryFn: () => documentService.getChecklist(nupcan) });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['document-checklist', nupcan] });
   const closeUpload = () => { setUploadTarget(undefined); setReplaceTarget(null); setOptionalName(''); setFile(null); };
-  const pickFile = (event: React.ChangeEvent<HTMLInputElement>) => { const next=event.target.files?.[0]||null; if(next&&next.size>10*1024*1024){setError('Le fichier dépasse 10 Mo.');event.target.value='';return;} setFile(next); };
-  const upload = useMutation({ mutationFn:async()=>{if(!file)throw new Error('Sélectionnez un fichier.');if(uploadTarget===null&&!optionalName.trim())throw new Error('Indiquez le nom du document.');const form=new FormData();form.append('file',file);form.append('nupcan',nupcan);form.append('nomdoc',uploadTarget?.nom||optionalName.trim());if(uploadTarget)form.append('requirement_id',uploadTarget.id);return documentService.uploadDocument(form);},onSuccess:()=>{setSuccess('Document envoyé en validation.');closeUpload();refresh();},onError:(e:Error)=>setError(e.message)});
+  const pickFile = (event: React.ChangeEvent<HTMLInputElement>) => { const next=event.target.files?.[0]||null; event.target.value=''; if(!next){setFile(null);return;} const check=validateDocumentFile(next); if(!check.ok){setError(check.error||'Fichier invalide.');setFile(null);return;} setError(''); setFile(next); };
+  const upload = useMutation({ mutationFn:async()=>{if(!file)throw new Error('Sélectionnez un fichier.');const check=validateDocumentFile(file);if(!check.ok)throw new Error(check.error);if(uploadTarget===null&&!optionalName.trim())throw new Error('Indiquez le nom du document.');const form=new FormData();form.append('file',file);form.append('nupcan',nupcan);form.append('nomdoc',(uploadTarget?.nom||optionalName.trim()).slice(0,120));if(uploadTarget)form.append('requirement_id',uploadTarget.id);return documentService.uploadDocument(form);},onSuccess:()=>{setSuccess('Document envoyé en validation.');closeUpload();refresh();},onError:(e:Error)=>setError(e.message)});
   const replace = useMutation({ mutationFn:async()=>{if(!file||!replaceTarget)throw new Error('Sélectionnez le nouveau fichier.');const form=new FormData();form.append('file',file);form.append('nomdoc',replaceTarget.nomdoc);return documentService.replaceDocument(replaceTarget.id,form);},onSuccess:()=>{setSuccess('Document remplacé et remis en attente de validation.');closeUpload();setDetails(null);refresh();},onError:(e:Error)=>setError(e.message)});
   const remove = useMutation({ mutationFn:(id:string)=>documentService.deleteDocument(nupcan,id),onSuccess:()=>{setSuccess('Document facultatif supprimé.');setDeleteTarget(null);setDetails(null);refresh();},onError:(e:Error)=>setError(e.message)});
   const rename = async (document:Document,name:string)=>{try{await documentService.renameDocument(document.id,name);setSuccess('Libellé du document modifié.');setDetails(null);await refresh();}catch(e:any){setError(e.message||'Modification impossible');throw e;}};

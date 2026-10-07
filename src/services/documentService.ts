@@ -89,6 +89,9 @@ export const documentService = {
 
   async uploadDocument(formData: FormData): Promise<Document> {
     try {
+      if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+        throw new Error('Connexion perdue : reconnectez-vous à internet puis réessayez.');
+      }
       const response = await api.post('/documents', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
