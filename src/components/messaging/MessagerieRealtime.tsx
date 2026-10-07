@@ -407,12 +407,14 @@ const MessagerieRealtime: React.FC<MessagerieRealtimeProps> = ({ nupcan, mode, a
       )}
 
       <SuccessModal
+        title="Succès"
         isOpen={successModal.show}
         onClose={() => setSuccessModal({ show: false, message: '' })}
         message={successModal.message}
       />
 
       <ErrorModal
+        title="Erreur"
         isOpen={errorModal.show}
         onClose={() => setErrorModal({ show: false, message: '' })}
         message={errorModal.message}
